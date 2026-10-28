@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ZKStamp/agentwallet",
+  "title": "I Am Wallet",
+  "description": "Shielded BitcoinZ wallets for AI agents: pay and send private messages, within safety limits.",
+  "repository": {
+    "url": "https://github.com/ZKStamp/AgentWallet",
+    "source": "github"
+  },
+  "websiteUrl": "https://proof.zketernity.app/agent/llms.txt",
+  "version": "0.1.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://proof.zketernity.app/agent/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer followed by your wallet key (starts with aw_). Get one with the create_wallet tool, which needs no key.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

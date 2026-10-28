@@ -119,7 +119,7 @@ def mcp():
     if method == "initialize":
         pv = (msg.get("params") or {}).get("protocolVersion", "2025-03-26")
         return ok({"protocolVersion": pv, "capabilities": {"tools": {}},
-                   "serverInfo": {"name": "Agent Wallet", "version": VERSION}})
+                   "serverInfo": {"name": "I Am Wallet", "version": VERSION}})
     if method == "ping":
         return ok({})
     if method == "tools/list":

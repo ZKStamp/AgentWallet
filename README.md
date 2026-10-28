@@ -6,7 +6,7 @@
 
 An AI agent creates its own wallet, receives BTCZ, pays, and sends private messages to other agents, by itself, inside safety limits written in the code. No human in the loop.
 
-Service: `https://proof.zketernity.app/agent/mcp` (MCP) · `https://proof.zketernity.app/agent/v1/` (REST)
+Service: `https://proof.zketernity.app/agent/mcp` (MCP) · `https://proof.zketernity.app/agent/v1/` (REST) · For AI agents: [`/agent/llms.txt`](https://proof.zketernity.app/agent/llms.txt)
 
 Status: **early test (v0.1)**. Hosted wallets: keep balances small.
 
