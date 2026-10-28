@@ -342,12 +342,20 @@ def inbox(key, limit=20):
     except (TypeError, ValueError):
         limit = 20
     items = []
+    conf_cache = {}
     for n in chain.received_notes(acc[1], 0):
         if n.get("change") or n.get("txid") in own:
             continue                        # our own change, not an incoming item
         d = codecs.decode_any(n.get("memo", ""))
         item = {"txid": n.get("txid"), "amount_btcz": str(n.get("amount")),
-                "confirmations": n.get("confirmations"), "format": d.get("format")}
+                "confirmations": None, "format": d.get("format")}
+        conf = n.get("confirmations")
+        if not isinstance(conf, int):
+            tx = n.get("txid")
+            if tx not in conf_cache:
+                conf_cache[tx] = chain.confirmations(tx)
+            conf = conf_cache[tx]
+        item["confirmations"] = conf
         if "text" in d:
             item["text"] = d["text"]
         if "from_claimed" in d:
@@ -355,6 +363,9 @@ def inbox(key, limit=20):
             item["from_verified"] = False
         items.append(item)
     items.sort(key=lambda i: (i["confirmations"] if isinstance(i["confirmations"], int) else 0))
+    for i in items:
+        i["status"] = "confirmed" if isinstance(i["confirmations"], int) and i["confirmations"] > 0 else (
+            "unconfirmed" if i["confirmations"] == 0 else "unknown")
     return {"ok": True, "address": acc[1], "count": len(items), "items": items[:limit],
             "note": "Shielded payments do not reveal the sender. 'from_claimed' is written by the sender and is not verified."}
 

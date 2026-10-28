@@ -52,6 +52,14 @@ def received_notes(addr, minconf=0):
     return json.loads(cli("z_listreceivedbyaddress", addr, minconf), parse_float=Decimal)
 
 
+def confirmations(txid):
+    """Confirmations of a wallet transaction (0 if unconfirmed, None if unknown)."""
+    try:
+        return int(json.loads(cli("gettransaction", txid)).get("confirmations", 0))
+    except (ChainError, ValueError, TypeError):
+        return None
+
+
 def block_height():
     return int(cli("getblockcount"))
 
