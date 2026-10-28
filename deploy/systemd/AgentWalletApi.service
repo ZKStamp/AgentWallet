@@ -1,0 +1,12 @@
+[Unit]
+Description=Agent Wallet API (local only)
+After=bitcoinzd.service
+
+[Service]
+WorkingDirectory=/root/agentwallet
+ExecStart=/usr/bin/python3 /root/agentwallet/AgentWalletApi.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Agent Wallet starter grants
+After=bitcoinzd.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/agentwallet
+ExecStart=/usr/bin/python3 /root/agentwallet/GrantStarters.py
