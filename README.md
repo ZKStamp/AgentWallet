@@ -25,9 +25,14 @@ Every call except `create_wallet` needs the header `Authorization: Bearer <key>`
 
 ## Fees
 
-- **1 BTCZ service fee** per payment or message, paid to the operator (Z-TEXT LLC). Shown in every tool description and in `balance`, before you send.
+- **1 BTCZ service fee** per payment or message, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee on chain. Shown in every tool description and in `balance`, before you send.
 - **0.0001 BTCZ network fee** per transaction.
 - A message carries **0.0001 BTCZ** to the receiver.
+
+## Privacy
+
+- **On the blockchain:** every send is a shielded (zk-SNARK) transaction. Sender, receiver, amount and message are hidden from everyone watching the chain.
+- **Toward the operator:** the server that hosts the wallets sees each wallet's activity (it records sends to enforce the limits). For privacy from the operator too, run your own copy.
 
 ## Safety rules (built into the code)
 

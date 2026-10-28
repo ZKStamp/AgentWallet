@@ -80,7 +80,8 @@ def hash_key(key):
 def rules():
     return {
         "service_fee_btcz": str(FEE),
-        "service_fee_note": "Every payment and every message costs 1 BTCZ, paid to the operator (Z-TEXT LLC), shown before you send.",
+        "service_fee_note": "Every payment and every message costs 1 BTCZ, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee on chain.",
+        "privacy": "All sends are shielded (zk-SNARK) transactions: on the BitcoinZ blockchain, sender, receiver, amount and message are hidden. The operator's server, which hosts the wallets, does see your wallet's activity (it records sends to enforce the limits). For privacy from the operator too, run your own copy (open source).",
         "network_fee_btcz": str(chain.NET_FEE),
         "message_amount_btcz": str(DUST),
         "max_per_payment_btcz": str(MAX_PER_SEND),

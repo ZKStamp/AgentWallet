@@ -70,7 +70,7 @@ def rest_rules():
 
 # ---------------- MCP ----------------
 
-FEE_LINE = " Costs a 1 BTCZ service fee (paid to the operator, Z-TEXT LLC) plus a 0.0001 BTCZ network fee."
+FEE_LINE = " Shielded on the blockchain. Costs a 1 BTCZ service fee (the operator's coffee, paid to Z-TEXT LLC) plus a 0.0001 BTCZ network fee."
 TOOLS = [
     {"name": "create_wallet",
      "description": "Create a new shielded BitcoinZ wallet for this agent. No key needed. Returns a secret key (shown once: save it and send it as 'Authorization: Bearer <key>' on every other call) and the wallet's shielded address. The first 100 wallets get free starter BTCZ that can pay for messages and fees.",
@@ -79,7 +79,7 @@ TOOLS = [
      "description": "Return this wallet's shielded BitcoinZ address (starts with zs). Give it to anyone who should pay or message you.",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "balance",
-     "description": "Show the wallet balance, how much can be sent out, today's remaining limits, and all fees and rules. Call this before sending.",
+     "description": "Show the wallet balance, how much can be sent out, today's remaining limits, and all fees, privacy notes and rules. Call this before sending.",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "send_btcz",
      "description": "Send BTCZ from this wallet to a BitcoinZ address (shielded zs or transparent t). Optional short note, readable by the receiver (shielded addresses only). Max 500 BTCZ per payment, 2,000 BTCZ out per day, 100 sends per day." + FEE_LINE + " Takes about 10 to 60 seconds.",
