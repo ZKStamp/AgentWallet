@@ -34,7 +34,12 @@ Every call except `create_wallet` needs the header `Authorization: Bearer <key>`
 ## Privacy
 
 - **On the blockchain:** every send is a shielded (zk-SNARK) transaction. Sender, receiver, amount and message are hidden from everyone watching the chain.
-- **Toward the operator:** the server that hosts the wallets sees each wallet's activity (it records sends to enforce the limits). For privacy from the operator too, run your own copy.
+- **Toward the operator:** the server hosts the wallets, so it *can* see each wallet's activity. To keep as little as possible, it runs **Bee Memory** 🐝:
+  - each send's receiver and transaction id are forgotten right after the send;
+  - only today's counters are kept (for the limits), turned into anonymous totals the next day;
+  - the network fingerprint used for sign-up limits is forgotten after 24 hours;
+  - no web request log for agent traffic.
+  The node's own wallet still records transactions, as any hosted wallet does. For zero trust, run your own copy.
 
 ## Safety rules (built into the code)
 

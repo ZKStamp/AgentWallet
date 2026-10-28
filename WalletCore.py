@@ -70,7 +70,37 @@ def db():
         txid TEXT,
         error TEXT)""")
     con.execute("CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT)")
+    con.execute("CREATE TABLE IF NOT EXISTS daily_stats(day TEXT, kind TEXT, status TEXT, n INTEGER, PRIMARY KEY(day, kind, status))")
+    try:
+        con.execute("ALTER TABLE sends ADD COLUMN txid_hash TEXT")
+    except sqlite3.OperationalError:
+        pass
     return con
+
+
+def h(x):
+    return hashlib.sha256((x or "").encode()).hexdigest()
+
+
+def forget(con):
+    """Bee Memory: keep only what the limits need.
+    - send details (receiver, txid) are wiped right after each send (see _execute)
+    - yesterday's send rows become anonymous daily counters, then are deleted
+    - the network fingerprint used for sign-up limits is wiped after 24 hours"""
+    d = today()
+    with con:
+        for day, kind, status, n in con.execute(
+                "SELECT substr(created_at,1,10), kind, status, COUNT(*) FROM sends WHERE substr(created_at,1,10)<? GROUP BY 1,2,3", (d,)).fetchall():
+            con.execute("INSERT INTO daily_stats(day, kind, status, n) VALUES (?,?,?,?) "
+                        "ON CONFLICT(day, kind, status) DO UPDATE SET n=n+excluded.n", (day, kind, status, n))
+        con.execute("DELETE FROM sends WHERE substr(created_at,1,10)<?", (d,))
+        for sid, tx in con.execute("SELECT id, txid FROM sends WHERE txid IS NOT NULL").fetchall():
+            con.execute("UPDATE sends SET txid=NULL, txid_hash=? WHERE id=?", (h(tx), sid))
+        con.execute("UPDATE sends SET to_address='' WHERE to_address!='' AND status!='pending'")
+        con.execute("UPDATE accounts SET ip_hash=NULL WHERE ip_hash IS NOT NULL AND created_at<?",
+                    (iso(now() - datetime.timedelta(days=1)),))
+        for aid, tx in con.execute("SELECT id, starter_txid FROM accounts WHERE starter_txid IS NOT NULL AND length(starter_txid)=64 AND starter_txid NOT LIKE 'h:%'").fetchall():
+            con.execute("UPDATE accounts SET starter_txid=? WHERE id=?", ("h:" + h(tx)[:62], aid))
 
 
 def hash_key(key):
@@ -81,7 +111,7 @@ def rules():
     return {
         "service_fee_btcz": str(FEE),
         "service_fee_note": "Every payment and every message costs 1 BTCZ, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee on chain.",
-        "privacy": "All sends are shielded (zk-SNARK) transactions: on the BitcoinZ blockchain, sender, receiver, amount and message are hidden. The operator's server, which hosts the wallets, does see your wallet's activity (it records sends to enforce the limits). For privacy from the operator too, run your own copy (open source).",
+        "privacy": "All sends are shielded (zk-SNARK) transactions: on the BitcoinZ blockchain, sender, receiver, amount and message are hidden. The operator's server hosts the wallets, so it can see your wallet's activity. Bee Memory: the service forgets each send's receiver and transaction id right after sending, keeps only today's counters for the limits (deleted the next day), and forgets your network fingerprint after 24 hours. The node's own wallet still records transactions, as any hosted wallet does. For zero trust, run your own copy (open source).",
         "network_fee_btcz": str(chain.NET_FEE),
         "message_amount_btcz": str(DUST),
         "max_per_payment_btcz": str(MAX_PER_SEND),
@@ -128,6 +158,7 @@ def create_wallet(ip):
     if is_frozen_all(con):
         con.close()
         return {"ok": False, "error": "service paused, try later"}
+    forget(con)
     ih = ip_hash(ip)
     t = now()
     minute_ago = iso(t - datetime.timedelta(minutes=1))
@@ -236,10 +267,11 @@ def _execute(con, send_id, from_addr, outputs):
         txid = chain.send(from_addr, outputs)
     except chain.ChainError as e:
         with con:
-            con.execute("UPDATE sends SET status='failed', error=? WHERE id=?", (str(e)[:300], send_id))
+            con.execute("UPDATE sends SET status='failed', to_address='', error='send failed' WHERE id=?", (send_id,))
         return {"ok": False, "error": "send failed, nothing was spent: " + str(e)[:200]}
     with con:
-        con.execute("UPDATE sends SET status='ok', txid=? WHERE id=?", (txid, send_id))
+        # Bee Memory: forget the receiver and the transaction id right away
+        con.execute("UPDATE sends SET status='ok', to_address='', txid=NULL, txid_hash=? WHERE id=?", (h(txid), send_id))
     return {"ok": True, "txid": txid, "explorer": "https://explorer.btcz.rocks/tx/" + txid}
 
 
@@ -273,6 +305,7 @@ def send_btcz(key, to, amount, note=None):
         except ValueError as e:
             con.close()
             return {"ok": False, "error": str(e)}
+    forget(con)
     con.isolation_level = None
     con.execute("BEGIN IMMEDIATE")
     send_id, err = _reserve(con, acc, "payment", to, amount)
@@ -308,6 +341,7 @@ def send_message(key, to, text):
     except ValueError as e:
         con.close()
         return {"ok": False, "error": str(e)}
+    forget(con)
     con.isolation_level = None
     con.execute("BEGIN IMMEDIATE")
     send_id, err = _reserve(con, acc, "message", to, DUST)
@@ -335,7 +369,8 @@ def inbox(key, limit=20):
     if not acc:
         con.close()
         return {"ok": False, "error": "invalid key"}
-    own = {r[0] for r in con.execute("SELECT txid FROM sends WHERE account_id=? AND txid IS NOT NULL", (acc[0],))}
+    forget(con)
+    own = {r[0] for r in con.execute("SELECT txid_hash FROM sends WHERE account_id=? AND txid_hash IS NOT NULL", (acc[0],))}
     con.close()
     try:
         limit = max(1, min(int(limit), 50))
@@ -344,7 +379,7 @@ def inbox(key, limit=20):
     items = []
     conf_cache = {}
     for n in chain.received_notes(acc[1], 0):
-        if n.get("change") or n.get("txid") in own:
+        if n.get("change") or h(n.get("txid")) in own:
             continue                        # our own change, not an incoming item
         d = codecs.decode_any(n.get("memo", ""))
         item = {"txid": n.get("txid"), "amount_btcz": str(n.get("amount")),
@@ -410,7 +445,7 @@ def grant_starters(max_now=STARTER_PER_DAY):
     with con:
         for acc_id, _ in queue:
             con.execute("UPDATE accounts SET starter_status='sent', starter_txid=?, starter_at=? WHERE id=?",
-                        (txid, iso(now()), acc_id))
+                        ("h:" + h(txid)[:62], iso(now()), acc_id))
     log.append("starter sent to accounts %s in %s" % ([i for i, _ in queue], txid))
     con.close()
     return log
