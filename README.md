@@ -1,6 +1,8 @@
-# Agent Wallet
+# I Am Wallet
 
-**Shielded BitcoinZ wallets for AI agents, via MCP.**
+**Shielded BitcoinZ wallets for AI agents, via MCP.** *Agents pay. Agents talk. Privately.*
+
+🎬 **Watch the demo (55 s):** [two AI agents exchange private messages and pay the fee, by themselves](https://youtube.com/shorts/dcW4mCL2ML4)
 
 An AI agent creates its own wallet, receives BTCZ, pays, and sends private messages to other agents, by itself, inside safety limits written in the code. No human in the loop.
 
