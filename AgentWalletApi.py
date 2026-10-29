@@ -77,7 +77,7 @@ def rest_deal_offer():
 @app.route("/v1/deal/pay", methods=["POST"])
 def rest_deal_pay():
     d = request.get_json(silent=True) or {}
-    return reply(deals.deal_pay(get_key(), d.get("deal_id", "")))
+    return reply(deals.deal_pay(get_key(), d.get("deal_id", ""), bool(d.get("force", False))))
 
 
 @app.route("/v1/deal/deliver", methods=["POST"])
@@ -143,12 +143,13 @@ TOOLS = [
                                     "description": {"type": "string", "description": "What you deliver, short"}},
                      "required": ["to", "price", "steps", "description"]}},
     {"name": "deal_pay",
-     "description": "DEALS (buyer): pay the NEXT step of a deal offered to you (find the deal_id in inbox or deal_status). Step 1 can be paid right away; each later step only after the previous one was delivered. Starter gift coins can pay up to 100 BTCZ of deals with other I Am Wallet wallets. Returns {ok, deal_id, step_paid, of_steps, paid_btcz, txid, next}." + FEE_LINE + AUTH,
+     "description": "DEALS (buyer): pay the NEXT step of a deal offered to you (find the deal_id in inbox or deal_status). Step 1 can be paid right away; each later step only after the previous one was delivered, and never right after a NO MATCH from deal_check (check again, or set force=true). Starter gift coins can pay up to 100 BTCZ of deals with other I Am Wallet wallets. Returns {ok, deal_id, step_paid, of_steps, paid_btcz, txid, next}." + FEE_LINE + AUTH,
      "inputSchema": {"type": "object",
-                     "properties": {"deal_id": {"type": "string", "description": "The 8-character deal id from the offer"}},
+                     "properties": {"deal_id": {"type": "string", "description": "The 8-character deal id from the offer"},
+                                    "force": {"type": "boolean", "description": "Pay even though your last check said NO MATCH (default false)"}},
                      "required": ["deal_id"]}},
     {"name": "deal_deliver",
-     "description": "DEALS (seller): deliver the NEXT step after it was paid (1 confirmation). Give either 'result' (short text, up to about 230 bytes, delivered inside the signed shielded message) or 'link' + 'fingerprint' (SHA-256 of the file) for bigger work. The fingerprint is written in the signed transaction as proof of what you delivered and when. Returns {ok, step_delivered, fingerprint_sha256, txid, proof_for_outsiders}." + FEE_LINE + AUTH,
+     "description": "DEALS (seller): deliver the NEXT step after it was paid (1 confirmation). Give either 'result' (short text, up to about 230 bytes, delivered inside the signed shielded message) or 'link' + 'fingerprint' (SHA-256 of the file) for bigger work. In link mode the fingerprint is your signed claim: the server never downloads the file, the buyer checks it. The fingerprint is written in the signed transaction as proof of what you delivered and when. Returns {ok, step_delivered, fingerprint_sha256, txid, proof_for_outsiders}." + FEE_LINE + AUTH,
      "inputSchema": {"type": "object",
                      "properties": {"deal_id": {"type": "string", "description": "The deal id"},
                                     "result": {"type": "string", "description": "Short result delivered inside the message"},
@@ -156,7 +157,7 @@ TOOLS = [
                                     "fingerprint": {"type": "string", "description": "SHA-256 (64 hex) of the file behind the link"}},
                      "required": ["deal_id"]}},
     {"name": "deal_check",
-     "description": "DEALS (buyer): check a delivered step against the seller's signed fingerprint. Free (no transaction). For a result inside the message it checks automatically; for a link, give the downloaded file's SHA-256 as 'fingerprint' (or its text as 'content'). Returns {ok, match, verdict, fingerprint_sha256, txid, seller_signer}. A match proves which result was delivered and when, not that the work is good." + AUTH,
+     "description": "DEALS (buyer): check a delivered step against the seller's signed fingerprint. Free (no transaction). For a result inside the message it checks automatically; for a link, compute the downloaded file's SHA-256 yourself and give it as 'fingerprint' (or its text as 'content'): the server never downloads the file. A NO MATCH blocks your next deal_pay until a check gives MATCH. Returns {ok, match, verdict, fingerprint_sha256, txid, seller_signer}. A match proves which result was delivered and when, not that the work is good." + AUTH,
      "inputSchema": {"type": "object",
                      "properties": {"deal_id": {"type": "string", "description": "The deal id"},
                                     "step": {"type": "integer", "description": "Step to check (default: the latest delivered)"},
@@ -211,7 +212,7 @@ def mcp():
         elif name == "deal_offer":
             r = deals.deal_offer(key, str(args.get("to", "")), args.get("price", ""), args.get("steps", ""), args.get("description", ""))
         elif name == "deal_pay":
-            r = deals.deal_pay(key, args.get("deal_id", ""))
+            r = deals.deal_pay(key, args.get("deal_id", ""), bool(args.get("force", False)))
         elif name == "deal_deliver":
             r = deals.deal_deliver(key, args.get("deal_id", ""), args.get("result"), args.get("link"), args.get("fingerprint"))
         elif name == "deal_check":

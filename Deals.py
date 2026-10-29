@@ -174,8 +174,10 @@ def deal_offer(key, to, price, steps, description):
             "service_fee_btcz": r["service_fee_btcz"]}
 
 
-def deal_pay(key, deal_id):
-    """Buyer: pay the next step of a deal offered to you."""
+def deal_pay(key, deal_id, force=False):
+    """Buyer: pay the next step of a deal offered to you.
+    After a NO MATCH on the previous step, payment is refused unless a later
+    check gives MATCH, or the buyer explicitly sets force=True."""
     did = _clean_id(deal_id)
     if not did:
         return {"ok": False, "error": "invalid deal_id (8 characters, from the offer)"}
@@ -183,12 +185,12 @@ def deal_pay(key, deal_id):
     if not _lock(name):
         return {"ok": False, "error": "a payment for this deal is already in progress: wait a minute, then check deal_status"}
     try:
-        return _deal_pay(key, did)
+        return _deal_pay(key, did, bool(force))
     finally:
         _unlock(name)
 
 
-def _deal_pay(key, did):
+def _deal_pay(key, did, force=False):
     con, acc = _open(key)
     if not acc:
         return {"ok": False, "error": "invalid key"}
@@ -213,6 +215,11 @@ def _deal_pay(key, did):
             con.close()
             return {"ok": False, "error": "step %d is not delivered yet: you pay step %d only after step %d arrives "
                                           "(no escrow, one small step at a time)" % (step - 1, step, step - 1)}
+        checks = [e for e in row["log"] if e.get("what") == "check" and e.get("step") == step - 1]
+        if checks and not checks[-1].get("match") and not force:
+            con.close()
+            return {"ok": False, "error": "your last deal_check of step %d said NO MATCH: payment blocked. Check again (MATCH unblocks), "
+                                          "or call deal_pay with force=true if you really want to pay anyway" % (step - 1)}
     con.close()
     r = core.send_btcz(key, row["counterparty"], row["price"], note="%s|pay|%s|%d" % (TAG, did, step), deal=True)
     if not r["ok"]:
@@ -324,9 +331,14 @@ def deal_check(key, deal_id, step=None, content=None, fingerprint=None):
         return {"ok": False, "error": "this step was delivered as a link: download the file, then give its SHA-256 as 'fingerprint' "
                                       "(or its text as 'content')", "link": d.get("link"), "fingerprint_sha256": stated}
     match = got == stated
+    if row:  # remember the verdict: a NO MATCH blocks the next payment (deal_pay)
+        row["log"].append({"step": d["step"], "what": "check", "match": match})
+        con = core.db()
+        _save(con, acc[0], did, "buyer", row)
+        con.close()
     out = {"ok": True, "deal_id": did, "step": d["step"], "match": match,
            "verdict": ("MATCH: this is exactly what the seller delivered and signed." if match else
-                       "NO MATCH: different from what the seller delivered. Do not pay the next step until this is solved."),
+                       "NO MATCH: different from what the seller delivered. The next payment is now blocked until a check gives MATCH."),
            "checked": how, "fingerprint_sha256": stated, "txid": d["txid"], "confirmations": d["confirmations"],
            "seller_signer": d["signer"], "note": "A match proves WHICH result was delivered and when, not that the work is good.",
            "proof_for_outsiders": PROOF_TIP}
@@ -334,6 +346,8 @@ def deal_check(key, deal_id, step=None, content=None, fingerprint=None):
         out["result"] = d["result"]
     if "link" in d:
         out["link"] = d["link"]
+        out["link_note"] = ("Link mode: the fingerprint is the seller's signed claim. The server never downloads the file, "
+                            "so compute the SHA-256 of the file you downloaded yourself and pass it as 'fingerprint'.")
     return out
 
 
