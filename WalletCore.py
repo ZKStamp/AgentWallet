@@ -28,7 +28,13 @@ GLOBAL_SENDS_PER_MINUTE = 30        # safety cap across ALL wallets (29 Oct)
 POOL_MAX_PER_DAY = STARTER_AMOUNT * STARTER_PER_DAY
 SIGNUPS_PER_IP_MINUTE = 1
 SIGNUPS_PER_IP_DAY = 5
-FUNDING_TIP = "Coming from an exchange, or from a wallet that only sends to t-addresses (like Coinomi)? Send your BTCZ to the free Z-TEXT wallet first (https://z-text.com/downloads): it shields them automatically. Then pay from Z-TEXT to your zs address."
+FUNDING_TIP = ("Coming from an exchange, or from a wallet that only sends to t-addresses (like Coinomi)? Send to your t_deposit_address: "
+               "the coins move into your shielded wallet by themselves. For a fully private deposit, send your BTCZ to the free Z-TEXT wallet "
+               "first (https://z-text.com/downloads): it shields them automatically. Then pay from Z-TEXT to your zs address.")
+T_PRIVACY_NOTE = ("Funding from an exchange or Coinomi? Use the t_deposit_address. Your deposit will be visible on the blockchain, but everything "
+                  "after it (payments, messages, deals) stays fully shielded. For a fully private deposit, use your zs address. "
+                  "Moving a deposit into your shielded wallet costs the 0.0001 BTCZ network fee.")
+SWEEP_MIN = Decimal("0.001")       # t-deposits below this are not moved
 WAIT_HINT = " (after a send, your change needs 1 block, about 2.5 minutes, before it can be spent again)"
 
 
@@ -77,7 +83,8 @@ def db():
     for sql in ("ALTER TABLE sends ADD COLUMN txid_hash TEXT",
                 "ALTER TABLE sends ADD COLUMN gift_used TEXT",
                 "ALTER TABLE accounts ADD COLUMN gift_btcz TEXT",
-                "ALTER TABLE accounts ADD COLUMN gift_deal_used TEXT NOT NULL DEFAULT '0'"):
+                "ALTER TABLE accounts ADD COLUMN gift_deal_used TEXT NOT NULL DEFAULT '0'",
+                "ALTER TABLE accounts ADD COLUMN t_address TEXT"):
         try:
             con.execute(sql)
         except sqlite3.OperationalError:
@@ -150,6 +157,7 @@ def rules():
         "global_cap": "Safety cap: max %d sends per minute across the whole service; above that, try again in a minute." % GLOBAL_SENDS_PER_MINUTE,
         "timing": "A send takes about 10 to 60 seconds. After a send, wait about 1 block (2.5 minutes) before the next one.",
         "custody": "Wallets are hosted on the operator's BitcoinZ node. Keep balances small.",
+        "t_deposit": T_PRIVACY_NOTE,
         "funding_tip": FUNDING_TIP,
     }
 
@@ -217,6 +225,8 @@ def create_wallet(ip):
                           "max %d starter wallets per day." % (queue, STARTER_AMOUNT, STARTER_PER_DAY))
     else:
         out["starter"] = "No free starter funds left. Receive BTCZ at your address to start."
+    out["t_deposit_address"] = t_address_for(address)
+    out["t_deposit_note"] = T_PRIVACY_NOTE
     out["funding_tip"] = FUNDING_TIP
     return out
 
@@ -263,7 +273,10 @@ def wallet_info(key):
         gift, deal_used = _gift(con, acc_id, s_status, total)
     sends, spent = _usage_today(con, acc_id)
     con.close()
+    t_addr = t_address_for(address)
+    t_wait = chain.balance(t_addr, 0) if t_addr else Decimal("0")
     return {"ok": True, "address": address, "signer": signer_for_key(key),
+            "t_deposit_address": t_addr, "t_deposit_waiting_btcz": str(t_wait),
             "balance_btcz": str(confirmed), "incoming_unconfirmed_btcz": str(total - confirmed),
             "starter_gift_btcz": str(gift),
             "starter_gift_for_deals_left_btcz": str(max(min(GIFT_DEAL_MAX - deal_used, gift), Decimal("0"))),
@@ -272,6 +285,47 @@ def wallet_info(key):
             "today": {"sends": sends, "sends_left": max(MAX_SENDS_PER_DAY - sends, 0),
                       "out_btcz": str(spent), "out_left_btcz": str(max(MAX_PER_DAY - spent, Decimal("0")))},
             "frozen": bool(frozen), "rules": rules()}
+
+
+def t_address_for(z_address):
+    """The wallet's t-deposit address; wallets from before 29 Oct get one on first use."""
+    con = db()
+    row = con.execute("SELECT t_address FROM accounts WHERE address=?", (z_address,)).fetchone()
+    if not row:
+        con.close()
+        return None
+    if row[0]:
+        con.close()
+        return row[0]
+    t = chain.new_t_address()
+    with con:
+        con.execute("UPDATE accounts SET t_address=? WHERE address=? AND t_address IS NULL", (t, z_address))
+    t = con.execute("SELECT t_address FROM accounts WHERE address=?", (z_address,)).fetchone()[0]
+    con.close()
+    return t
+
+
+def sweep_t_deposits():
+    """Move confirmed t-deposits into each wallet's own shielded address.
+    One transaction per t-address (never combined, so they stay unlinked).
+    The 0.0001 network fee comes out of the deposit. Run by GrantStarters.py."""
+    con = db()
+    if is_frozen_all(con):
+        con.close()
+        return ["frozen: no t-deposit moves"]
+    rows = con.execute("SELECT id, address, t_address FROM accounts WHERE t_address IS NOT NULL AND frozen=0").fetchall()
+    con.close()
+    log = []
+    for acc_id, z, t in rows:
+        try:
+            bal = chain.balance(t)
+            if bal < SWEEP_MIN:
+                continue
+            txid = chain.send(t, [{"address": z, "amount": bal - chain.NET_FEE}])
+            log.append("t-deposit of wallet %d moved to its shielded address in %s" % (acc_id, txid))
+        except chain.ChainError as e:
+            log.append("t-deposit move of wallet %d failed, will retry: %s" % (acc_id, str(e)[:150]))
+    return log
 
 
 # ---------------- sending ----------------

@@ -54,7 +54,12 @@ Hosted v0.2: the signing key is derived from the wallet key (`SHA-256("I Am Wall
 
 ## Funding a wallet
 
-Wallet addresses are shielded (`zs`). **Coming from an exchange, or from a wallet that only sends to t-addresses (like Coinomi)?** Send your BTCZ to the free [Z-TEXT](https://z-text.com/downloads) wallet first: it shields them automatically. Then pay from Z-TEXT to your agent's `zs` address.
+Each wallet has two addresses:
+
+- `address` (`zs`): **fully private** deposits.
+- `t_deposit_address` (`t`): for exchanges and t-only wallets like Coinomi. The deposit is visible on the blockchain, but everything after it (payments, messages, deals) stays shielded. The coins move into the wallet's `zs` address by themselves, minus the 0.0001 BTCZ network fee.
+
+For a fully private deposit from an exchange, send your BTCZ to the free [Z-TEXT](https://z-text.com/downloads) wallet first: it shields them automatically. Then pay from Z-TEXT to your agent's `zs` address.
 
 ## Fees
 

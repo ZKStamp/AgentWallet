@@ -29,7 +29,10 @@ def my_address(key):
     con = core.db()
     acc = core.account_for_key(con, key)
     con.close()
-    return {"ok": True, "address": acc[1], "signer": core.signer_for_key(key)} if acc else {"ok": False, "error": "invalid key"}
+    if not acc:
+        return {"ok": False, "error": "invalid key"}
+    return {"ok": True, "address": acc[1], "signer": core.signer_for_key(key),
+            "t_deposit_address": core.t_address_for(acc[1]), "t_deposit_note": core.T_PRIVACY_NOTE}
 
 
 # ---------------- REST ----------------
@@ -106,13 +109,13 @@ AUTH = " Needs the header 'Authorization: Bearer <key>' (your wallet key from cr
 SENT = " Returns {ok, txid, explorer, service_fee_btcz, network_fee_btcz} or {ok: false, error}. Takes about 10 to 60 seconds; afterwards the wallet's change needs about 1 block (2.5 minutes) before the next send."
 TOOLS = [
     {"name": "create_wallet",
-     "description": "Create a NEW shielded BitcoinZ wallet for this agent (every call creates another wallet). No key needed. Returns {ok, key, address, starter, rules}: the secret key is shown ONCE, save it and send it as 'Authorization: Bearer <key>' on every other call. There is no recovery: a lost key means a lost wallet. The first 100 wallets get free starter BTCZ (a gift for messages, fees and small deals; it cannot be withdrawn).",
+     "description": "Create a NEW shielded BitcoinZ wallet for this agent (every call creates another wallet). No key needed. Returns {ok, key, address, t_deposit_address, starter, rules}: the secret key is shown ONCE, save it and send it as 'Authorization: Bearer <key>' on every other call. There is no recovery: a lost key means a lost wallet. The first 100 wallets get free starter BTCZ (a gift for messages, fees and small deals; it cannot be withdrawn).",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "my_address",
-     "description": "Return this wallet's shielded BitcoinZ address (starts with zs) and its signer id (awid_..., your public identity, the same across all deals). Give the address to anyone who should pay or message you." + AUTH + " Returns {ok, address, signer}.",
+     "description": "Return this wallet's shielded BitcoinZ address (starts with zs) and its signer id (awid_..., your public identity, the same across all deals). Give the address to anyone who should pay or message you. Also returns t_deposit_address, for funding from exchanges or t-only wallets (the deposit is visible on the blockchain; it moves into your shielded wallet by itself, minus the 0.0001 network fee)." + AUTH + " Returns {ok, address, signer, t_deposit_address, t_deposit_note}.",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "balance",
-     "description": "Show the wallet balance, the starter gift part, how much can be sent out, today's remaining limits, and all fees, privacy notes and rules. Call this before sending." + AUTH + " Returns {ok, address, signer, balance_btcz, incoming_unconfirmed_btcz, starter_gift_btcz, starter_gift_for_deals_left_btcz, sendable_out_btcz, today, frozen, rules}.",
+     "description": "Show the wallet balance, the starter gift part, how much can be sent out, today's remaining limits, and all fees, privacy notes and rules. Call this before sending." + AUTH + " Returns {ok, address, signer, t_deposit_address, t_deposit_waiting_btcz, balance_btcz, incoming_unconfirmed_btcz, starter_gift_btcz, starter_gift_for_deals_left_btcz, sendable_out_btcz, today, frozen, rules}.",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "send_btcz",
      "description": "Send BTCZ from this wallet to a BitcoinZ address (shielded zs or transparent t). Optional short signed note, readable by the receiver (shielded addresses only). Uses your own coins (starter gift coins cannot be withdrawn). Max 500 BTCZ per payment, 2,000 BTCZ out per day, 100 sends per day." + FEE_LINE + AUTH + SENT,

@@ -11,7 +11,7 @@ Key facts:
 - Starter funds: the first 100 wallets get 1,000 BTCZ (max 10 per day), a gift for trying the service: starter coins pay messages, fees, and up to 100 BTCZ of deal payments to other I Am Wallet wallets. They can never be withdrawn; coins received from a starter-paid deal stay starter coins for the receiver.
 - Identity: every message and deal step is signed (Ed25519). Each wallet has a public signer id (awid_...), so agents can check who they deal with.
 - No key recovery: a lost key means a lost wallet. create_wallet makes a new wallet on every call.
-- Funding: wallet addresses are shielded (zs). From an exchange or a t-address-only wallet (like Coinomi), send the BTCZ to the free Z-TEXT wallet first (https://z-text.com/downloads): it shields them automatically. Then pay from Z-TEXT to the agent's zs address.
+- Funding: each wallet has a shielded address (zs, fully private) and a t_deposit_address (for exchanges and t-only wallets like Coinomi; the deposit is visible on the blockchain, everything after it stays shielded; the coins move into the zs address by themselves, minus the 0.0001 BTCZ network fee). For a fully private deposit from an exchange, send the BTCZ to the free Z-TEXT wallet first (https://z-text.com/downloads), then pay from Z-TEXT to the agent's zs address.
 - Fee: 1 BTCZ per payment or message, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee in the galaxy, tens of thousands of times cheaper than a €2 coffee in a European café. Plus a 0.0001 BTCZ network fee. A message carries 0.0001 BTCZ to the receiver.
 - Limits per wallet: max 500 BTCZ per payment, 2,000 BTCZ out per day, 100 sends per day. New wallets: 1 per minute and 5 per day per network. Whole service: max 30 sends per minute.
 - Timing: a send takes about 10 to 60 seconds. After a send, wait about 1 block (2.5 minutes) before the next one.
@@ -20,7 +20,7 @@ Key facts:
 ## MCP tools
 
 - create_wallet: create a shielded wallet. Returns key (shown once) and a zs address.
-- my_address: this wallet's shielded address and signer id.
+- my_address: this wallet's shielded address, signer id and t_deposit_address.
 - balance: balance, what can be sent out, today's remaining limits, all fees and rules.
 - send_btcz: pay a BitcoinZ address (zs or t), with an optional note (zs only).
 - send_message: private, signed message to a shielded address (zs). Includes the sender's address so the receiver can reply. About 330 bytes of text.

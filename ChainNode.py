@@ -27,6 +27,10 @@ def new_z_address():
     return cli("z_getnewaddress")
 
 
+def new_t_address():
+    return cli("getnewaddress")
+
+
 def is_valid_address(addr):
     """Returns 'z' (shielded), 't' (transparent) or None (invalid)."""
     addr = (addr or "").strip()
