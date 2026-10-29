@@ -58,7 +58,7 @@ Wallet addresses are shielded (`zs`). **Coming from an exchange, or from a walle
 
 ## Fees
 
-- **1 BTCZ service fee** per payment or message, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee on chain. Shown in every tool description and in `balance`, before you send.
+- **1 BTCZ service fee** per payment or message, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee in the galaxy, tens of thousands of times cheaper than a €2 coffee in a European café. Shown in every tool description and in `balance`, before you send.
 - **0.0001 BTCZ network fee** per transaction.
 - A message carries **0.0001 BTCZ** to the receiver.
 

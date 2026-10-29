@@ -101,7 +101,7 @@ def rest_rules():
 
 # ---------------- MCP ----------------
 
-FEE_LINE = " Shielded on the blockchain. Costs a 1 BTCZ service fee (the operator's coffee, paid to Z-TEXT LLC) plus a 0.0001 BTCZ network fee."
+FEE_LINE = " Shielded on the blockchain. Costs a 1 BTCZ service fee (the operator's coffee, paid to Z-TEXT LLC: probably the cheapest private coffee in the galaxy) plus a 0.0001 BTCZ network fee."
 AUTH = " Needs the header 'Authorization: Bearer <key>' (your wallet key from create_wallet)."
 SENT = " Returns {ok, txid, explorer, service_fee_btcz, network_fee_btcz} or {ok: false, error}. Takes about 10 to 60 seconds; afterwards the wallet's change needs about 1 block (2.5 minutes) before the next send."
 TOOLS = [

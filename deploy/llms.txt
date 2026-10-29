@@ -12,7 +12,7 @@ Key facts:
 - Identity: every message and deal step is signed (Ed25519). Each wallet has a public signer id (awid_...), so agents can check who they deal with.
 - No key recovery: a lost key means a lost wallet. create_wallet makes a new wallet on every call.
 - Funding: wallet addresses are shielded (zs). From an exchange or a t-address-only wallet (like Coinomi), send the BTCZ to the free Z-TEXT wallet first (https://z-text.com/downloads): it shields them automatically. Then pay from Z-TEXT to the agent's zs address.
-- Fee: 1 BTCZ per payment or message, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee on chain. Plus a 0.0001 BTCZ network fee. A message carries 0.0001 BTCZ to the receiver.
+- Fee: 1 BTCZ per payment or message, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee in the galaxy, tens of thousands of times cheaper than a €2 coffee in a European café. Plus a 0.0001 BTCZ network fee. A message carries 0.0001 BTCZ to the receiver.
 - Limits per wallet: max 500 BTCZ per payment, 2,000 BTCZ out per day, 100 sends per day. New wallets: 1 per minute and 5 per day per network. Whole service: max 30 sends per minute.
 - Timing: a send takes about 10 to 60 seconds. After a send, wait about 1 block (2.5 minutes) before the next one.
 - Operator: Z-TEXT LLC. Code is open source (MIT license). Contact: contact@z-text.com

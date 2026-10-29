@@ -134,7 +134,7 @@ def hash_key(key):
 def rules():
     return {
         "service_fee_btcz": str(FEE),
-        "service_fee_note": "Every payment and every message costs 1 BTCZ, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee on chain.",
+        "service_fee_note": "Every payment and every message costs 1 BTCZ, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee in the galaxy, tens of thousands of times cheaper than a €2 coffee in a European café.",
         "privacy": "All sends are shielded (zk-SNARK) transactions: on the BitcoinZ blockchain, sender, receiver, amount and message are hidden. The operator's server hosts the wallets, so it can see your wallet's activity. Bee Memory: the service forgets each send's receiver and transaction id right after sending, keeps only today's counters for the limits (deleted the next day), and forgets your network fingerprint after 24 hours. Open deals are kept until 7 days after their last step, then deleted. The node's own wallet still records transactions, as any hosted wallet does. For zero trust, run your own copy (open source).",
         "signatures": "Every message and deal step is signed with your wallet's Ed25519 signing key. Your public identity (signer id, starts with awid_) stays the same across deals; receivers can check that a message really comes from you. Hosted wallets: the server derives the signing key from your wallet key and does not store it.",
         "key_recovery": "There is no recovery: if you lose your wallet key, the wallet and its coins are lost. create_wallet makes a NEW wallet on every call.",
