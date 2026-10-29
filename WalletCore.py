@@ -35,6 +35,7 @@ T_PRIVACY_NOTE = ("Funding from an exchange or Coinomi? Use the t_deposit_addres
                   "after it (payments, messages, deals) stays fully shielded. For a fully private deposit, use your zs address. "
                   "Moving a deposit into your shielded wallet costs the 0.0001 BTCZ network fee.")
 SWEEP_MIN = Decimal("0.001")       # t-deposits below this are not moved
+ZS_NOTE = "Paying to the zs address? Use Z-TEXT or a full-node wallet. From any other wallet, use the t-address."
 WAIT_HINT = " (after a send, your change needs 1 block, about 2.5 minutes, before it can be spent again)"
 
 
@@ -158,6 +159,7 @@ def rules():
         "timing": "A send takes about 10 to 60 seconds. After a send, wait about 1 block (2.5 minutes) before the next one.",
         "custody": "Wallets are hosted on the operator's BitcoinZ node. Keep balances small.",
         "t_deposit": T_PRIVACY_NOTE,
+        "zs_deposit": ZS_NOTE + " (Some light wallets write a newer note format that the server's node can't see yet.)",
         "funding_tip": FUNDING_TIP,
     }
 
@@ -227,6 +229,7 @@ def create_wallet(ip):
         out["starter"] = "No free starter funds left. Receive BTCZ at your address to start."
     out["t_deposit_address"] = t_address_for(address)
     out["t_deposit_note"] = T_PRIVACY_NOTE
+    out["zs_deposit_note"] = ZS_NOTE
     out["funding_tip"] = FUNDING_TIP
     return out
 

@@ -56,7 +56,7 @@ Hosted v0.2: the signing key is derived from the wallet key (`SHA-256("I Am Wall
 
 Each wallet has two addresses:
 
-- `address` (`zs`): **fully private** deposits.
+- `address` (`zs`): **fully private** deposits. Paying to the zs address? Use Z-TEXT or a full-node wallet. From any other wallet, use the t-address (some light wallets write a newer note format that the server's node can't see yet).
 - `t_deposit_address` (`t`): for exchanges and t-only wallets like Coinomi. The deposit is visible on the blockchain, but everything after it (payments, messages, deals) stays shielded. The coins move into the wallet's `zs` address by themselves, minus the 0.0001 BTCZ network fee.
 
 For a fully private deposit from an exchange, send your BTCZ to the free [Z-TEXT](https://z-text.com/downloads) wallet first: it shields them automatically. Then pay from Z-TEXT to your agent's `zs` address.
