@@ -6,6 +6,7 @@ message formats only through MessageCodecs.
 import datetime, hashlib, json, os, secrets, sqlite3
 from decimal import Decimal
 
+import AgentSign
 import ChainNode as chain
 import MessageCodecs as codecs
 
@@ -22,10 +23,12 @@ MAX_SENDS_PER_DAY = 100             # max payments + messages per wallet per UTC
 STARTER_AMOUNT = Decimal("1000")    # free starter funds
 STARTER_TOTAL = 100                 # first 100 wallets only
 STARTER_PER_DAY = 10                # max starter grants per UTC day
-STARTER_LOCK_DAYS = 7               # starter coins: messages/fees only for 7 days
+GIFT_DEAL_MAX = Decimal("100")      # starter (gift) coins usable for deal payments, per wallet, in total
+GLOBAL_SENDS_PER_MINUTE = 30        # safety cap across ALL wallets (29 Oct)
 POOL_MAX_PER_DAY = STARTER_AMOUNT * STARTER_PER_DAY
 SIGNUPS_PER_IP_MINUTE = 1
 SIGNUPS_PER_IP_DAY = 5
+FUNDING_TIP = "Coming from an exchange, or from a wallet that only sends to t-addresses (like Coinomi)? Send your BTCZ to the free Z-TEXT wallet first (https://z-text.com/downloads): it shields them automatically. Then pay from Z-TEXT to your zs address."
 WAIT_HINT = " (after a send, your change needs 1 block, about 2.5 minutes, before it can be spent again)"
 
 
@@ -71,10 +74,29 @@ def db():
         error TEXT)""")
     con.execute("CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT)")
     con.execute("CREATE TABLE IF NOT EXISTS daily_stats(day TEXT, kind TEXT, status TEXT, n INTEGER, PRIMARY KEY(day, kind, status))")
-    try:
-        con.execute("ALTER TABLE sends ADD COLUMN txid_hash TEXT")
-    except sqlite3.OperationalError:
-        pass
+    for sql in ("ALTER TABLE sends ADD COLUMN txid_hash TEXT",
+                "ALTER TABLE sends ADD COLUMN gift_used TEXT",
+                "ALTER TABLE accounts ADD COLUMN gift_btcz TEXT",
+                "ALTER TABLE accounts ADD COLUMN gift_deal_used TEXT NOT NULL DEFAULT '0'"):
+        try:
+            con.execute(sql)
+        except sqlite3.OperationalError:
+            pass
+    con.execute("""CREATE TABLE IF NOT EXISTS deals(
+        id INTEGER PRIMARY KEY,
+        account_id INTEGER NOT NULL,
+        deal_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        counterparty TEXT NOT NULL,
+        price TEXT NOT NULL,
+        steps INTEGER NOT NULL,
+        description TEXT,
+        done_steps INTEGER NOT NULL DEFAULT 0,
+        counter_signer TEXT,
+        log TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(account_id, deal_id, role))""")
     return con
 
 
@@ -86,9 +108,11 @@ def forget(con):
     """Bee Memory: keep only what the limits need.
     - send details (receiver, txid) are wiped right after each send (see _execute)
     - yesterday's send rows become anonymous daily counters, then are deleted
-    - the network fingerprint used for sign-up limits is wiped after 24 hours"""
+    - the network fingerprint used for sign-up limits is wiped after 24 hours
+    - a deal's record is deleted 7 days after its last step"""
     d = today()
     with con:
+        con.execute("DELETE FROM deals WHERE updated_at<?", (iso(now() - datetime.timedelta(days=7)),))
         for day, kind, status, n in con.execute(
                 "SELECT substr(created_at,1,10), kind, status, COUNT(*) FROM sends WHERE substr(created_at,1,10)<? GROUP BY 1,2,3", (d,)).fetchall():
             con.execute("INSERT INTO daily_stats(day, kind, status, n) VALUES (?,?,?,?) "
@@ -111,16 +135,22 @@ def rules():
     return {
         "service_fee_btcz": str(FEE),
         "service_fee_note": "Every payment and every message costs 1 BTCZ, paid to the operator (Z-TEXT LLC). It buys the operator a coffee: probably the cheapest private coffee on chain.",
-        "privacy": "All sends are shielded (zk-SNARK) transactions: on the BitcoinZ blockchain, sender, receiver, amount and message are hidden. The operator's server hosts the wallets, so it can see your wallet's activity. Bee Memory: the service forgets each send's receiver and transaction id right after sending, keeps only today's counters for the limits (deleted the next day), and forgets your network fingerprint after 24 hours. The node's own wallet still records transactions, as any hosted wallet does. For zero trust, run your own copy (open source).",
+        "privacy": "All sends are shielded (zk-SNARK) transactions: on the BitcoinZ blockchain, sender, receiver, amount and message are hidden. The operator's server hosts the wallets, so it can see your wallet's activity. Bee Memory: the service forgets each send's receiver and transaction id right after sending, keeps only today's counters for the limits (deleted the next day), and forgets your network fingerprint after 24 hours. Open deals are kept until 7 days after their last step, then deleted. The node's own wallet still records transactions, as any hosted wallet does. For zero trust, run your own copy (open source).",
+        "signatures": "Every message and deal step is signed with your wallet's Ed25519 signing key. Your public identity (signer id, starts with awid_) stays the same across deals; receivers can check that a message really comes from you. Hosted wallets: the server derives the signing key from your wallet key and does not store it.",
+        "key_recovery": "There is no recovery: if you lose your wallet key, the wallet and its coins are lost. create_wallet makes a NEW wallet on every call.",
         "network_fee_btcz": str(chain.NET_FEE),
         "message_amount_btcz": str(DUST),
         "max_per_payment_btcz": str(MAX_PER_SEND),
         "max_out_per_day_btcz": str(MAX_PER_DAY),
         "max_sends_per_day": MAX_SENDS_PER_DAY,
-        "starter": "The first %d wallets get %s free BTCZ (max %d per day). For %d days, starter coins can only pay for messages and fees, not be sent out."
-                   % (STARTER_TOTAL, STARTER_AMOUNT, STARTER_PER_DAY, STARTER_LOCK_DAYS),
+        "starter": ("The first %d wallets get %s free BTCZ (max %d per day). Starter coins are a gift for trying the service: they pay messages, fees, "
+                    "and up to %s BTCZ of deal payments to other I Am Wallet wallets. They can never be withdrawn; coins received from a starter-paid "
+                    "deal stay starter coins for the receiver." % (STARTER_TOTAL, STARTER_AMOUNT, STARTER_PER_DAY, GIFT_DEAL_MAX)),
+        "deals": "Deals: trade with another agent in small steps (offer, pay a step, deliver a step with a SHA-256 fingerprint, check, repeat). No escrow: pay one small step at a time. Max %d steps per deal; an offer expires after about 24 hours (576 blocks). For a proof anyone can check, also stamp the fingerprint with ZKStamp Proof-100 (https://proof.zketernity.app/llms.txt)." % 10,
+        "global_cap": "Safety cap: max %d sends per minute across the whole service; above that, try again in a minute." % GLOBAL_SENDS_PER_MINUTE,
         "timing": "A send takes about 10 to 60 seconds. After a send, wait about 1 block (2.5 minutes) before the next one.",
         "custody": "Wallets are hosted on the operator's BitcoinZ node. Keep balances small.",
+        "funding_tip": FUNDING_TIP,
     }
 
 
@@ -187,6 +217,7 @@ def create_wallet(ip):
                           "max %d starter wallets per day." % (queue, STARTER_AMOUNT, STARTER_PER_DAY))
     else:
         out["starter"] = "No free starter funds left. Receive BTCZ at your address to start."
+    out["funding_tip"] = FUNDING_TIP
     return out
 
 
@@ -197,11 +228,19 @@ def account_for_key(con, key):
                        (hash_key(key),)).fetchone()
 
 
-def _locked(starter_status, starter_at):
-    if starter_status != "sent" or not starter_at:
-        return Decimal("0")
-    unlock = datetime.datetime.fromisoformat(starter_at) + datetime.timedelta(days=STARTER_LOCK_DAYS)
-    return STARTER_AMOUNT if now() < unlock else Decimal("0")
+def _gift(con, acc_id, starter_status, total):
+    """Starter (gift) coins of a wallet, capped by what it holds (incl. unconfirmed).
+    Wallets from before v0.2 get their label set here on first use."""
+    row = con.execute("SELECT gift_btcz, gift_deal_used FROM accounts WHERE id=?", (acc_id,)).fetchone()
+    g, used = row
+    if g is None:
+        g = min(STARTER_AMOUNT, total) if starter_status == "sent" else Decimal("0")
+        con.execute("UPDATE accounts SET gift_btcz=? WHERE id=?", (str(g), acc_id))
+    return min(Decimal(g), total), Decimal(used or "0")
+
+
+def signer_for_key(key):
+    return AgentSign.signer_id(AgentSign.public_key(AgentSign.seed_for_key(key)))
 
 
 def _usage_today(con, account_id):
@@ -219,14 +258,16 @@ def wallet_info(key):
         return {"ok": False, "error": "invalid key"}
     acc_id, address, s_status, s_at, frozen = acc
     confirmed = chain.balance(address)
-    pending = chain.balance(address, 0) - confirmed
-    locked = min(_locked(s_status, s_at), confirmed)
+    total = chain.balance(address, 0)
+    with con:
+        gift, deal_used = _gift(con, acc_id, s_status, total)
     sends, spent = _usage_today(con, acc_id)
     con.close()
-    return {"ok": True, "address": address,
-            "balance_btcz": str(confirmed), "incoming_unconfirmed_btcz": str(pending),
-            "starter_locked_btcz": str(locked),
-            "sendable_out_btcz": str(max(confirmed - locked, Decimal("0"))),
+    return {"ok": True, "address": address, "signer": signer_for_key(key),
+            "balance_btcz": str(confirmed), "incoming_unconfirmed_btcz": str(total - confirmed),
+            "starter_gift_btcz": str(gift),
+            "starter_gift_for_deals_left_btcz": str(max(min(GIFT_DEAL_MAX - deal_used, gift), Decimal("0"))),
+            "sendable_out_btcz": str(max(confirmed - gift, Decimal("0"))),
             "starter_status": s_status,
             "today": {"sends": sends, "sends_left": max(MAX_SENDS_PER_DAY - sends, 0),
                       "out_btcz": str(spent), "out_left_btcz": str(max(MAX_PER_DAY - spent, Decimal("0")))},
@@ -235,58 +276,87 @@ def wallet_info(key):
 
 # ---------------- sending ----------------
 
-def _reserve(con, acc, kind, to_address, amount):
-    """Check every rule and reserve today's quota atomically. Returns (send_id, None) or (None, error)."""
+def _reserve(con, acc, kind, to_address, amount, deal=False):
+    """Check every rule and reserve today's quota atomically.
+    Returns (send_id, plan, None) or (None, None, error).
+    plan: gift coins used, and gift coins that move to a hosted receiver (deals)."""
     acc_id, address, s_status, s_at, frozen = acc
     if is_frozen_all(con):
-        return None, "service paused, try later"
+        return None, None, "service paused, try later"
     if frozen:
-        return None, "this wallet is frozen"
+        return None, None, "this wallet is frozen"
+    minute_ago = iso(now() - datetime.timedelta(minutes=1))
+    if con.execute("SELECT COUNT(*) FROM sends WHERE created_at>=? AND status IN ('pending','ok')",
+                   (minute_ago,)).fetchone()[0] >= GLOBAL_SENDS_PER_MINUTE:
+        return None, None, "service busy (max %d sends per minute for everyone), try again in a minute" % GLOBAL_SENDS_PER_MINUTE
     sends, spent = _usage_today(con, acc_id)
     if sends >= MAX_SENDS_PER_DAY:
-        return None, "daily limit reached: max %d sends per day" % MAX_SENDS_PER_DAY
+        return None, None, "daily limit reached: max %d sends per day" % MAX_SENDS_PER_DAY
     if spent + amount + FEE > MAX_PER_DAY:
-        return None, "daily limit reached: max %s BTCZ out per day" % MAX_PER_DAY
+        return None, None, "daily limit reached: max %s BTCZ out per day" % MAX_PER_DAY
     confirmed = chain.balance(address)
-    cost = amount + FEE + chain.NET_FEE
-    if kind == "payment":
-        locked = min(_locked(s_status, s_at), confirmed)
-        if cost > confirmed - locked:
-            return None, ("not enough sendable BTCZ: need %s, sendable %s (starter coins are locked for messages for %d days)"
-                          % (cost, confirmed - locked, STARTER_LOCK_DAYS)) if locked else \
-                         "not enough confirmed BTCZ: need %s, have %s" % (cost, confirmed) + WAIT_HINT
-    elif cost > confirmed:
-        return None, "not enough confirmed BTCZ: need %s, have %s" % (cost, confirmed) + WAIT_HINT
-    cur = con.execute("INSERT INTO sends(account_id, created_at, kind, to_address, amount, fee, status) VALUES (?,?,?,?,?,?, 'pending')",
-                      (acc_id, iso(now()), kind, to_address, str(amount), str(FEE)))
-    return cur.lastrowid, None
+    total = chain.balance(address, 0)
+    gift, deal_used = _gift(con, acc_id, s_status, total)
+    real = max(confirmed - gift, Decimal("0"))
+    fees = FEE + chain.NET_FEE
+    gift_amt = Decimal("0")
+    receiver = None
+    if amount + fees > confirmed:
+        return None, None, "not enough confirmed BTCZ: need %s, have %s" % (amount + fees, confirmed) + WAIT_HINT
+    if kind == "message":
+        gift_used = min(gift, amount + fees)
+    else:
+        gift_fee = min(gift, fees)
+        if deal:
+            row = con.execute("SELECT id FROM accounts WHERE address=?", (to_address,)).fetchone()
+            if row:
+                receiver = row[0]
+                gift_amt = max(min(gift - gift_fee, amount, GIFT_DEAL_MAX - deal_used), Decimal("0"))
+        need_real = amount - gift_amt + fees - gift_fee
+        if need_real > real:
+            if gift > 0:
+                return None, None, ("not enough withdrawable BTCZ: this payment needs %s of your own coins, you have %s. Starter coins never leave "
+                                    "I Am Wallet; they pay messages, fees and up to %s BTCZ of deal payments to other I Am Wallet wallets."
+                                    % (need_real, real, GIFT_DEAL_MAX))
+            return None, None, "not enough confirmed BTCZ: need %s, have %s" % (amount + fees, confirmed) + WAIT_HINT
+        gift_used = gift_fee + gift_amt
+    con.execute("UPDATE accounts SET gift_btcz=?, gift_deal_used=? WHERE id=?",
+                (str(gift - gift_used), str(deal_used + gift_amt), acc_id))
+    cur = con.execute("INSERT INTO sends(account_id, created_at, kind, to_address, amount, fee, status, gift_used) VALUES (?,?,?,?,?,?, 'pending', ?)",
+                      (acc_id, iso(now()), kind, to_address, str(amount), str(FEE), str(gift_used)))
+    return cur.lastrowid, {"gift_used": gift_used, "gift_amt": gift_amt, "receiver": receiver}, None
 
 
-def _execute(con, send_id, from_addr, outputs):
+def _execute(con, send_id, acc_id, from_addr, outputs, plan):
     try:
         txid = chain.send(from_addr, outputs)
     except chain.ChainError as e:
         with con:
             con.execute("UPDATE sends SET status='failed', to_address='', error='send failed' WHERE id=?", (send_id,))
+            # give the starter label back: nothing was spent
+            g, u = con.execute("SELECT gift_btcz, gift_deal_used FROM accounts WHERE id=?", (acc_id,)).fetchone()
+            con.execute("UPDATE accounts SET gift_btcz=?, gift_deal_used=? WHERE id=?",
+                        (str(Decimal(g or "0") + plan["gift_used"]), str(Decimal(u or "0") - plan["gift_amt"]), acc_id))
         return {"ok": False, "error": "send failed, nothing was spent: " + str(e)[:200]}
     with con:
         # Bee Memory: forget the receiver and the transaction id right away
         con.execute("UPDATE sends SET status='ok', to_address='', txid=NULL, txid_hash=? WHERE id=?", (h(txid), send_id))
+        if plan["receiver"] and plan["gift_amt"] > 0:
+            # starter coins stay starter coins for the receiver
+            row = con.execute("SELECT gift_btcz FROM accounts WHERE id=?", (plan["receiver"],)).fetchone()
+            con.execute("UPDATE accounts SET gift_btcz=? WHERE id=?",
+                        (str(Decimal(row[0] or "0") + plan["gift_amt"]), plan["receiver"]))
     return {"ok": True, "txid": txid, "explorer": "https://explorer.btcz.rocks/tx/" + txid}
 
 
-def send_btcz(key, to, amount, note=None):
-    try:
-        amount = Decimal(str(amount)).quantize(Decimal("0.00000001"))
-    except Exception:
-        return {"ok": False, "error": "invalid amount"}
-    if amount <= 0:
-        return {"ok": False, "error": "amount must be positive"}
-    if amount > MAX_PER_SEND:
-        return {"ok": False, "error": "max %s BTCZ per payment" % MAX_PER_SEND}
+def _signed_send(key, kind, to, amount, text=None, deal=False):
+    """One shielded send: a payment (optional signed note) or a signed message.
+    kind: 'payment' or 'message'. deal=True lets starter coins pay (deals only)."""
     kind_addr = chain.is_valid_address(to)
     if not kind_addr:
         return {"ok": False, "error": "invalid BitcoinZ address"}
+    if kind == "message" and kind_addr != "z":
+        return {"ok": False, "error": "messages need a shielded BitcoinZ address (starts with zs)"}
     con = db()
     acc = account_for_key(con, key)
     if not acc:
@@ -296,19 +366,24 @@ def send_btcz(key, to, amount, note=None):
         con.close()
         return {"ok": False, "error": "cannot send to yourself"}
     memo = None
-    if note:
+    if text is not None:
         if kind_addr != "z":
             con.close()
             return {"ok": False, "error": "a note can only be attached when sending to a shielded (zs) address"}
         try:
-            memo = codecs.ACTIVE.encode(acc[1], str(note))
+            memo = codecs.SIGNED.encode_signed(AgentSign.seed_for_key(key), acc[1], to, str(text))
         except ValueError as e:
             con.close()
             return {"ok": False, "error": str(e)}
     forget(con)
     con.isolation_level = None
     con.execute("BEGIN IMMEDIATE")
-    send_id, err = _reserve(con, acc, "payment", to, amount)
+    try:
+        send_id, plan, err = _reserve(con, acc, kind, to, amount, deal)
+    except Exception:
+        con.execute("ROLLBACK")
+        con.close()
+        raise
     if err:
         con.execute("ROLLBACK")
         con.close()
@@ -318,70 +393,49 @@ def send_btcz(key, to, amount, note=None):
     out = [{"address": to, "amount": amount}, {"address": config()["fee_address"], "amount": FEE}]
     if memo:
         out[0]["memo"] = memo
-    r = _execute(con, send_id, acc[1], out)
+    r = _execute(con, send_id, acc[0], acc[1], out, plan)
     con.close()
     if r["ok"]:
-        r.update({"sent_btcz": str(amount), "service_fee_btcz": str(FEE), "network_fee_btcz": str(chain.NET_FEE)})
+        r.update({"service_fee_btcz": str(FEE), "network_fee_btcz": str(chain.NET_FEE),
+                  "starter_gift_used_btcz": str(plan["gift_used"])})
+        if memo:
+            r.update({"format": codecs.SIGNED.name, "signer": signer_for_key(key)})
+    return r
+
+
+def send_btcz(key, to, amount, note=None, deal=False):
+    try:
+        amount = Decimal(str(amount)).quantize(Decimal("0.00000001"))
+    except Exception:
+        return {"ok": False, "error": "invalid amount"}
+    if amount <= 0:
+        return {"ok": False, "error": "amount must be positive"}
+    if amount > MAX_PER_SEND:
+        return {"ok": False, "error": "max %s BTCZ per payment" % MAX_PER_SEND}
+    r = _signed_send(key, "payment", to, amount, note if note else None, deal)
+    if r["ok"]:
+        r["sent_btcz"] = str(amount)
     return r
 
 
 def send_message(key, to, text):
-    if chain.is_valid_address(to) != "z":
-        return {"ok": False, "error": "messages need a shielded BitcoinZ address (starts with zs)"}
-    con = db()
-    acc = account_for_key(con, key)
-    if not acc:
-        con.close()
-        return {"ok": False, "error": "invalid key"}
-    if to == acc[1]:
-        con.close()
-        return {"ok": False, "error": "cannot message yourself"}
-    try:
-        memo = codecs.ACTIVE.encode(acc[1], str(text))
-    except ValueError as e:
-        con.close()
-        return {"ok": False, "error": str(e)}
-    forget(con)
-    con.isolation_level = None
-    con.execute("BEGIN IMMEDIATE")
-    send_id, err = _reserve(con, acc, "message", to, DUST)
-    if err:
-        con.execute("ROLLBACK")
-        con.close()
-        return {"ok": False, "error": err}
-    con.execute("COMMIT")
-    con.isolation_level = ""
-    out = [{"address": to, "amount": DUST, "memo": memo},
-           {"address": config()["fee_address"], "amount": FEE}]
-    r = _execute(con, send_id, acc[1], out)
-    con.close()
+    r = _signed_send(key, "message", to, DUST, str(text))
     if r["ok"]:
-        r.update({"format": codecs.ACTIVE.name, "service_fee_btcz": str(FEE), "network_fee_btcz": str(chain.NET_FEE),
-                  "message_amount_btcz": str(DUST)})
+        r["message_amount_btcz"] = str(DUST)
     return r
 
 
 # ---------------- reading ----------------
 
-def inbox(key, limit=20):
-    con = db()
-    acc = account_for_key(con, key)
-    if not acc:
-        con.close()
-        return {"ok": False, "error": "invalid key"}
-    forget(con)
+def inbox_items(acc, con):
+    """All incoming items of a wallet, decoded, newest first (no limit)."""
     own = {r[0] for r in con.execute("SELECT txid_hash FROM sends WHERE account_id=? AND txid_hash IS NOT NULL", (acc[0],))}
-    con.close()
-    try:
-        limit = max(1, min(int(limit), 50))
-    except (TypeError, ValueError):
-        limit = 20
     items = []
     conf_cache = {}
     for n in chain.received_notes(acc[1], 0):
         if n.get("change") or h(n.get("txid")) in own:
             continue                        # our own change, not an incoming item
-        d = codecs.decode_any(n.get("memo", ""))
+        d = codecs.decode_any(n.get("memo", ""), acc[1])
         item = {"txid": n.get("txid"), "amount_btcz": str(n.get("amount")),
                 "confirmations": None, "format": d.get("format")}
         conf = n.get("confirmations")
@@ -395,14 +449,35 @@ def inbox(key, limit=20):
             item["text"] = d["text"]
         if "from_claimed" in d:
             item["from_claimed"] = d["from_claimed"]
-            item["from_verified"] = False
+        if "signer" in d:
+            item["signer"] = d["signer"]
+            item["signature_valid"] = bool(d.get("signature_valid"))
+        elif "from_claimed" in d:
+            item["signature_valid"] = False
         items.append(item)
     items.sort(key=lambda i: (i["confirmations"] if isinstance(i["confirmations"], int) else 0))
     for i in items:
         i["status"] = "confirmed" if isinstance(i["confirmations"], int) and i["confirmations"] > 0 else (
             "unconfirmed" if i["confirmations"] == 0 else "unknown")
+    return items
+
+
+def inbox(key, limit=20):
+    con = db()
+    acc = account_for_key(con, key)
+    if not acc:
+        con.close()
+        return {"ok": False, "error": "invalid key"}
+    forget(con)
+    try:
+        limit = max(1, min(int(limit), 50))
+    except (TypeError, ValueError):
+        limit = 20
+    items = inbox_items(acc, con)
+    con.close()
     return {"ok": True, "address": acc[1], "count": len(items), "items": items[:limit],
-            "note": "Shielded payments do not reveal the sender. 'from_claimed' is written by the sender and is not verified."}
+            "note": "Shielded payments do not reveal the sender. 'signer' is the sender's public identity: if 'signature_valid' is true, "
+                    "the message (including 'from_claimed', the reply address) was really written by that signer. Unsigned items cannot be verified."}
 
 
 # ---------------- starter grants (run by GrantStarters.py) ----------------
@@ -435,8 +510,8 @@ def grant_starters(max_now=STARTER_PER_DAY):
     if not queue:
         con.close()
         return ["pool too low (or its last change is not confirmed yet)"]
-    memo = codecs.ACTIVE.encode(pool, "Welcome to Agent Wallet. %s BTCZ starter funds: messages and fees only for %d days. Rules: call balance."
-                                % (STARTER_AMOUNT, STARTER_LOCK_DAYS))
+    memo = codecs.ACTIVE.encode(pool, "Welcome to I Am Wallet. %s BTCZ starter coins: a gift for messages, fees and small deals (up to %s BTCZ) "
+                                      "inside I Am Wallet. They cannot be withdrawn. Rules: call balance." % (STARTER_AMOUNT, GIFT_DEAL_MAX))
     try:
         txid = chain.send(pool, [{"address": a, "amount": STARTER_AMOUNT, "memo": memo} for _, a in queue])
     except chain.ChainError as e:
@@ -444,8 +519,9 @@ def grant_starters(max_now=STARTER_PER_DAY):
         return ["grant batch failed: %s" % e]
     with con:
         for acc_id, _ in queue:
-            con.execute("UPDATE accounts SET starter_status='sent', starter_txid=?, starter_at=? WHERE id=?",
-                        ("h:" + h(txid)[:62], iso(now()), acc_id))
+            con.execute("UPDATE accounts SET starter_status='sent', starter_txid=?, starter_at=?, "
+                        "gift_btcz=CAST(COALESCE(gift_btcz,'0') AS REAL)+? WHERE id=?",
+                        ("h:" + h(txid)[:62], iso(now()), float(STARTER_AMOUNT), acc_id))
     log.append("starter sent to accounts %s in %s" % ([i for i, _ in queue], txid))
     con.close()
     return log

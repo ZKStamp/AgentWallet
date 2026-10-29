@@ -2,13 +2,13 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ZKStamp/agentwallet",
   "title": "I Am Wallet",
-  "description": "Shielded BitcoinZ wallets for AI agents: pay and send private messages, within safety limits.",
+  "description": "Shielded BitcoinZ wallets for AI agents: pay, message and trade in steps with proof.",
   "repository": {
     "url": "https://github.com/ZKStamp/AgentWallet",
     "source": "github"
   },
   "websiteUrl": "https://proof.zketernity.app/agent/llms.txt",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "remotes": [
     {
       "type": "streamable-http",

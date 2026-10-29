@@ -40,6 +40,10 @@ def status():
     new_today = con.execute("SELECT COUNT(*) FROM accounts WHERE substr(created_at,1,10)=?", (d,)).fetchone()[0]
     sends = con.execute("SELECT kind, status, COUNT(*) FROM sends WHERE substr(created_at,1,10)=? GROUP BY kind, status", (d,)).fetchall()
     frozen = con.execute("SELECT id FROM accounts WHERE frozen=1").fetchall()
+    gift = con.execute("SELECT COALESCE(SUM(CAST(gift_btcz AS REAL)),0), COALESCE(SUM(CAST(gift_deal_used AS REAL)),0) FROM accounts").fetchone()
+    deals = con.execute("SELECT role, COUNT(*), SUM(done_steps) FROM deals GROUP BY role").fetchall()
+    print("Starter gift coins held by wallets:", round(gift[0], 4), "BTCZ | used in deals:", round(gift[1], 4), "BTCZ")
+    print("Deals (last 7 days):", [tuple(d) for d in deals] or "none")
     print("Kill switch (all frozen):", "ON" if core.is_frozen_all(con) else "off")
     con.close()
     print("Starter pool balance:", chain.balance(cfg["pool_address"]), "BTCZ")
