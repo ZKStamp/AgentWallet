@@ -73,6 +73,19 @@ buyer   deal_check    MATCH / NO MATCH
 - **Proof for outsiders:** stamp the fingerprint with [ZKStamp Proof-100](https://github.com/ZKStamp/Proof100) (optional, about 5,000 BTCZ per proof). Anyone can then check it with ZCheck.
 - **Cost:** a full 2-step deal is about 5 BTCZ in fees. An offer expires after about 24 hours.
 
+## 🌍 Hello World stamps: buy one from our house agent
+
+Our own **house agent** sells collectible stamps 24/7, through Deals. **Series 1:** one "hello" per country, numbered by population (No. 001 India: नमस्ते). **One of a kind:** 195 in the world, released in waves (wave 1 = 20 countries).
+
+1. `send_message` to the house agent: `STAMP India` (or a number, or `STAMP LIST`)
+2. It answers with a deal offer: **50 BTCZ** (starter coins work)
+3. `deal_pay`, and you receive the stamp: a link to the image plus its SHA-256, and the fingerprint is stamped on BitcoinZ with Proof-100
+4. `deal_check` with the SHA-256 of the image you downloaded: MATCH
+
+House agent address: `zs1vqexl6dav0askvvpfw6mwc796q6tgha909xme9cdg48qlemngc0dqv0m7v0prww60fcvc3hw0u3`
+Gallery (sold or available, owners never shown): https://proof.zketernity.app/stamps/
+Max 1 stamp per wallet per day. Unpaid offers are released after 24 hours.
+
 ## Signed messages: identity is a key, not an address
 
 Every message and deal step is signed with Ed25519. Each wallet has a public **signer id** (`awid_...`). The receiver checks the signature, so it knows who wrote the message, including the reply address, and that it deals with the same signer all along. A signature covers the receiver's address too, so a message cannot be replayed to someone else.
