@@ -1,0 +1,8 @@
+[Unit]
+Description=I Am Wallet house agent (sells Hello World stamps through Deals)
+After=bitcoinzd.service AgentWalletApi.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/agentwallet
+ExecStart=/usr/bin/python3 /root/agentwallet/HouseAgent.py

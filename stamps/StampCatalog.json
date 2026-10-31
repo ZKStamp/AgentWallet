@@ -1,0 +1,227 @@
+{
+ "series": "Hello World · Series 1",
+ "price_btcz": "50",
+ "total_countries": 195,
+ "stamps": [
+  {
+   "number": 1,
+   "country": "India",
+   "population": "1,476,625,576",
+   "language": "Hindi",
+   "hello": "नमस्ते",
+   "hello_latin": "Namaste",
+   "file": "HelloStamp001.png",
+   "sha256": "6b8fc493c74c35d6080b44ee3fc8b6f0bec0849bfcdd675530beaa570269c545",
+   "wave": 1
+  },
+  {
+   "number": 2,
+   "country": "China",
+   "population": "1,412,914,089",
+   "language": "Mandarin",
+   "hello": "你好",
+   "hello_latin": "Nǐ hǎo",
+   "file": "HelloStamp002.png",
+   "sha256": "c576cbe70bee8d67ec4a8b42d89b37db70b36eca764cdceb20c2d718f7c940d5",
+   "wave": 1
+  },
+  {
+   "number": 3,
+   "country": "United States",
+   "population": "349,035,494",
+   "language": "English",
+   "hello": "Hello",
+   "hello_latin": "Hello",
+   "file": "HelloStamp003.png",
+   "sha256": "198322a7c099b5683d1ee9a7466ff11db5cafcfac80f7ae89bc1f823bd841cb8",
+   "wave": 1
+  },
+  {
+   "number": 4,
+   "country": "Indonesia",
+   "population": "287,886,782",
+   "language": "Indonesian",
+   "hello": "Halo",
+   "hello_latin": "Halo",
+   "file": "HelloStamp004.png",
+   "sha256": "d9afd6f6b56a43c1f33064bf64d3cc84f688f0e6d73e84452d481a291c57c616",
+   "wave": 1
+  },
+  {
+   "number": 5,
+   "country": "Pakistan",
+   "population": "259,299,791",
+   "language": "Urdu",
+   "hello": "السلام علیکم",
+   "hello_latin": "Assalam-o-Alaikum",
+   "file": "HelloStamp005.png",
+   "sha256": "61911d600ef8527b29f7555a59151255a1b0ef65d1ffab52f72bb816508309d3",
+   "wave": 1
+  },
+  {
+   "number": 6,
+   "country": "Nigeria",
+   "population": "242,431,832",
+   "language": "Hausa",
+   "hello": "Sannu",
+   "hello_latin": "Sannu",
+   "file": "HelloStamp006.png",
+   "sha256": "8ee16548e394d3e11566b9748bb25f62c58c21c0b30c56fa1b77d203b3f71322",
+   "wave": 1
+  },
+  {
+   "number": 7,
+   "country": "Brazil",
+   "population": "213,562,666",
+   "language": "Portuguese",
+   "hello": "Olá",
+   "hello_latin": "Olá",
+   "file": "HelloStamp007.png",
+   "sha256": "132465e7b4418e1924f9990cd2f07754089a698c9cb21d7303d0ebe7f8e7f49a",
+   "wave": 1
+  },
+  {
+   "number": 8,
+   "country": "Bangladesh",
+   "population": "177,818,044",
+   "language": "Bengali",
+   "hello": "আসসালামু আলাইকুম",
+   "hello_latin": "Assalamu Alaikum",
+   "file": "HelloStamp008.png",
+   "sha256": "daf2b038e6b0b21a5b13bb977fe8445f8e32848f04521d8d7392415738577a18",
+   "wave": 1
+  },
+  {
+   "number": 9,
+   "country": "Russia",
+   "population": "143,394,458",
+   "language": "Russian",
+   "hello": "Привет",
+   "hello_latin": "Privet",
+   "file": "HelloStamp009.png",
+   "sha256": "ed38376b8bf08634435ca362bad409a4e5be53ad14edb011a856d0701509fdef",
+   "wave": 1
+  },
+  {
+   "number": 10,
+   "country": "Ethiopia",
+   "population": "138,902,185",
+   "language": "Amharic",
+   "hello": "ሰላም",
+   "hello_latin": "Selam",
+   "file": "HelloStamp010.png",
+   "sha256": "0048c958b2a9216e442aded4c2c0d12e2970d74a42fe2c2471828e3f36eb55a9",
+   "wave": 1
+  },
+  {
+   "number": 11,
+   "country": "Mexico",
+   "population": "132,997,658",
+   "language": "Spanish",
+   "hello": "Hola",
+   "hello_latin": "Hola",
+   "file": "HelloStamp011.png",
+   "sha256": "77d7c29c6a5ac7f5f4859f37df58c4fafc682e51a6657f0248ac935b8dad258f",
+   "wave": 1
+  },
+  {
+   "number": 12,
+   "country": "Japan",
+   "population": "122,427,731",
+   "language": "Japanese",
+   "hello": "こんにちは",
+   "hello_latin": "Konnichiwa",
+   "file": "HelloStamp012.png",
+   "sha256": "f96a9aba403c95e954b2e5efd1732f8ef1bccdf5925ab2c75ec5505c28c21b72",
+   "wave": 1
+  },
+  {
+   "number": 13,
+   "country": "Egypt",
+   "population": "120,101,175",
+   "language": "Arabic",
+   "hello": "أهلاً",
+   "hello_latin": "Ahlan",
+   "file": "HelloStamp013.png",
+   "sha256": "9a3705f4b01bd9657cb86b15cbac181d44479ad6fa569a9b260dcf32804c0161",
+   "wave": 1
+  },
+  {
+   "number": 14,
+   "country": "Philippines",
+   "population": "117,724,471",
+   "language": "Filipino",
+   "hello": "Kumusta",
+   "hello_latin": "Kumusta",
+   "file": "HelloStamp014.png",
+   "sha256": "69eebb4ed48b18b2e6d49fab1273cb6e1884a74e86bea5923943b07de25a126d",
+   "wave": 1
+  },
+  {
+   "number": 15,
+   "country": "DR Congo",
+   "population": "116,452,162",
+   "language": "Lingala",
+   "hello": "Mbote",
+   "hello_latin": "Mbote",
+   "file": "HelloStamp015.png",
+   "sha256": "c97a3dfd7eaf49d59696aa908ad60a17d519741c141ac3b5942e1c36c37a2138",
+   "wave": 1
+  },
+  {
+   "number": 16,
+   "country": "Vietnam",
+   "population": "102,177,431",
+   "language": "Vietnamese",
+   "hello": "Xin chào",
+   "hello_latin": "Xin chào",
+   "file": "HelloStamp016.png",
+   "sha256": "f9ce376f32938dde586419a9f92c1333d759a46a3a137ead08593ffa0cc8234b",
+   "wave": 1
+  },
+  {
+   "number": 17,
+   "country": "Iran",
+   "population": "93,168,497",
+   "language": "Persian",
+   "hello": "سلام",
+   "hello_latin": "Salâm",
+   "file": "HelloStamp017.png",
+   "sha256": "06d827947396eb84857a91c12b616cdb4a1f804c052378f751043ce77a279f47",
+   "wave": 1
+  },
+  {
+   "number": 18,
+   "country": "Turkey",
+   "population": "87,926,082",
+   "language": "Turkish",
+   "hello": "Merhaba",
+   "hello_latin": "Merhaba",
+   "file": "HelloStamp018.png",
+   "sha256": "00f4b31992c3e04be9d44150680ca8b985107dcd174a5de14fc410309f2af9a8",
+   "wave": 1
+  },
+  {
+   "number": 19,
+   "country": "Germany",
+   "population": "83,644,258",
+   "language": "German",
+   "hello": "Hallo",
+   "hello_latin": "Hallo",
+   "file": "HelloStamp019.png",
+   "sha256": "a974db0dba4f78da4c9e6144de7b10784e56fee8ef925ebf0266edf574f2498b",
+   "wave": 1
+  },
+  {
+   "number": 20,
+   "country": "Tanzania",
+   "population": "72,563,780",
+   "language": "Swahili",
+   "hello": "Habari",
+   "hello_latin": "Habari",
+   "file": "HelloStamp020.png",
+   "sha256": "ffd374af3a25a7a7d7bc01d3788b37b99207026d997b3fd747265dea790759b1",
+   "wave": 1
+  }
+ ]
+}
