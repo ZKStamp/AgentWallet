@@ -47,6 +47,7 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
 .wait.show{display:block}.fact{min-height:3.2em;transition:opacity .4s}
 .strip{display:flex;gap:8px;overflow-x:auto;padding:6px 0}.strip img{height:96px;border-radius:5px;flex:none}
 .vid{position:relative;width:100%;max-width:300px;aspect-ratio:9/16;margin-top:8px}.vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:8px}
+.tiles{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.tile{background:#0f1612;border:1px solid var(--line);border-radius:8px;padding:6px 10px;color:#fff;font-size:.82em;font-weight:400;cursor:pointer}.tile.on{border-color:var(--g);color:var(--g)}
 .log{font-size:.82em;color:var(--m);margin:6px 0 0;padding-left:18px}.log li{margin:2px 0}.log a{font-size:.95em}
 </style>
 </head>
@@ -104,10 +105,10 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
 </div>
 
 <div class="wait" id="wait">
- <b>⏳ While you wait…</b>
+ <b id="wTitle">⏳ While you wait…</b>
  <p class="fact" id="fact"></p>
  <div class="strip" id="strip"></div>
- <div class="row"><button class="ghost" id="bVid">▶ Watch two AI agents make a deal (54 s)</button></div>
+ <div class="tiles" id="tiles"></div>
  <div id="vid"></div>
 </div>
 
@@ -252,14 +253,39 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
   var factI = 0;
   function rotateFact() { var f = $("fact"); f.style.opacity = 0; setTimeout(function () { f.textContent = FACTS[factI++ % FACTS.length]; f.style.opacity = 1; }, 400); }
   rotateFact(); setInterval(rotateFact, 9000);
-  function waiting(on) { $("wait").className = "wait" + (on ? " show" : ""); }
-  $("bVid").onclick = function () {
-    var v = $("vid"); if (v.firstChild) return;
+  // videos: open by themselves (muted) after 20 s of waiting; the visitor can pick another
+  var VIDEOS = [
+    { id: "cX-odrxM86M", t: "🤝 Two AI agents make a deal" },
+    { id: "0hyYpF-5V1o", t: "🌍 Hello World stamps" },
+    { id: "dcW4mCL2ML4", t: "💬 Two AI agents talk privately" }
+  ];
+  var waitSince = 0, playing = null, autoDone = false;
+  VIDEOS.forEach(function (v) {
+    var b = document.createElement("button"); b.className = "tile"; b.textContent = "▶ " + v.t; b.id = "t_" + v.id;
+    b.onclick = function () { play(v.id, false); };
+    $("tiles").appendChild(b);
+  });
+  function play(id, auto) {
+    playing = id; autoDone = true;
+    VIDEOS.forEach(function (v) { $("t_" + v.id).className = "tile" + (v.id === id ? " on" : ""); });
+    var box = $("vid"); box.textContent = "";
     var d = document.createElement("div"); d.className = "vid";
-    var f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/cX-odrxM86M?autoplay=1&mute=1";
-    f.allow = "autoplay; encrypted-media; picture-in-picture"; f.setAttribute("allowfullscreen", ""); f.title = "Two AI agents make a deal";
-    d.appendChild(f); v.appendChild(d);
-  };
+    var f = document.createElement("iframe");
+    f.src = "https://www.youtube-nocookie.com/embed/" + id + "?autoplay=1&playsinline=1&rel=0" + (auto ? "&mute=1" : "");
+    f.allow = "autoplay; encrypted-media; picture-in-picture"; f.setAttribute("allowfullscreen", ""); f.title = "Video";
+    d.appendChild(f); box.appendChild(d);
+    if (auto) { var n = document.createElement("div"); n.className = "pill"; n.textContent = "Muted: tap the video for sound."; box.appendChild(n); }
+    $("wait").className = "wait show";
+  }
+  function waiting(on) {
+    if (on && !waitSince) waitSince = Date.now();
+    if (!on) waitSince = 0;
+    if (on && !autoDone && Date.now() - waitSince >= (FAST ? 3000 : 20000)) play(VIDEOS[0].id, true);
+    // a playing video stays on screen, even when it's the visitor's turn
+    $("wait").className = "wait" + (on || playing ? " show" : "");
+    $("wTitle").textContent = on ? "⏳ While you wait…" : "🎬 Videos";
+    $("fact").style.display = on ? "" : "none"; $("strip").style.display = on ? "" : "none";
+  }
   function fillStrip() {
     var s = $("strip"); if (s.firstChild || !house) return;
     house.stamps.forEach(function (x) {
