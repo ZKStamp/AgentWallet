@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Try I Am Wallet · Buy a Hello World stamp</title>
+<meta name="description" content="Try I Am Wallet in your browser: create a free test wallet, get free starter BTCZ, buy a one-of-a-kind Hello World stamp from an AI house agent through a private BitcoinZ deal, and check the proof yourself.">
+<style>
+:root{--bg:#0c100e;--card:#16201b;--line:#24382c;--g:#4ade80;--dg:#1a7f4b;--m:#a8b8af;--warn:#e7c35a;--bad:#f08080}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+.w{max-width:760px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.8em;margin:.2em 0 .3em}a{color:var(--g)}.m{color:var(--m)}.g{color:var(--g)}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:14px;opacity:.45}
+.step.on{opacity:1;border-color:var(--dg)}.step.done{opacity:.85}
+.step h2{font-size:1.05em;margin:0 0 6px;display:flex;gap:10px;align-items:center}
+.n{display:inline-flex;width:28px;height:28px;border-radius:50%;background:#24382c;align-items:center;justify-content:center;font-size:.9em;flex:none}
+.on .n{background:var(--dg)}.done .n{background:var(--dg)}
+button{background:var(--dg);color:#fff;border:0;border-radius:8px;padding:11px 18px;font-size:1em;font-weight:700;cursor:pointer}
+button:disabled{background:#2c3a32;color:#7d8d84;cursor:default}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--m);font-weight:400;padding:7px 12px;font-size:.85em}
+select{background:#0f1612;color:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:1em;max-width:100%}
+code,.key{word-break:break-all;color:#cfe;font-size:.85em}
+.key{display:block;background:#0f1612;border:1px dashed var(--warn);border-radius:8px;padding:10px;margin:8px 0}
+.warn{color:var(--warn)}.bad{color:var(--bad)}
+.status{margin-top:8px;color:var(--m);font-size:.92em}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:s 1s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+.big{font-size:1.4em;font-weight:800}
+.result img{width:100%;max-width:340px;border-radius:8px;display:block;margin:10px 0}
+.match{font-size:1.5em;font-weight:900;color:var(--g)}
+.note{font-size:.85em;color:var(--m);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:18px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="w">
+<p class="g"><b>ZKStamp · I Am Wallet</b> · <a href="./">Stamp gallery</a></p>
+<h1>Try it in your browser</h1>
+<p class="m">Do what an AI agent does, by clicking: create a private BitcoinZ wallet, get free starter coins, buy a one-of-a-kind <b>Hello World stamp</b> from our AI house agent through a Deal, and check the proof yourself. No install, no sign-up, no email.</p>
+<p class="m">⏱ About <b>15 to 20 minutes</b> in total, mostly waiting for BitcoinZ blocks (one every 2.5 minutes). You can close this page and come back: it remembers your test wallet in this browser.</p>
+
+<div class="step" id="s1">
+ <h2><span class="n">1</span>Create your test wallet</h2>
+ <div id="s1b"><button id="bCreate">Create my wallet</button></div>
+ <div class="status" id="s1s"></div>
+</div>
+
+<div class="step" id="s2">
+ <h2><span class="n">2</span>Receive free starter coins (1,000 BTCZ)</h2>
+ <div id="s2b" class="m">The first 100 wallets get them, max 10 per day. They arrive by themselves.</div>
+ <div class="status" id="s2s"></div>
+</div>
+
+<div class="step" id="s3">
+ <h2><span class="n">3</span>Ask the house agent for a stamp</h2>
+ <div class="m">Your wallet sends a signed, private message to the AI house agent: <code>STAMP &lt;number&gt;</code>. Costs 1 BTCZ (paid with starter coins).</div>
+ <div class="row"><select id="pick" disabled><option>Loading stamps…</option></select><button id="bAsk" disabled>Send the request</button></div>
+ <div class="status" id="s3s"></div>
+</div>
+
+<div class="step" id="s4">
+ <h2><span class="n">4</span>Pay the deal offer (50 BTCZ)</h2>
+ <div class="m">The house agent answers with a signed Deal offer. You pay one step: 50 BTCZ + 1 BTCZ fee, starter coins work.</div>
+ <div id="offer"></div>
+ <div class="row"><button id="bPay" disabled>Pay 50 BTCZ</button></div>
+ <div class="status" id="s4s"></div>
+</div>
+
+<div class="step" id="s5">
+ <h2><span class="n">5</span>Receive the stamp and check the proof</h2>
+ <div class="m">The house agent delivers a link + the stamp's SHA-256 fingerprint, signed, inside a shielded transaction. Your browser downloads the image, computes its SHA-256 itself, and checks it: MATCH or NO MATCH.</div>
+ <div class="result" id="result"></div>
+ <div class="status" id="s5s"></div>
+</div>
+
+<div class="note">
+ <b>Honest notes.</b> Early test (v0.2). This is a <b>hosted</b> wallet: it lives on our BitcoinZ node, so keep balances tiny. Starter coins are a gift for trying: they can never be withdrawn. Every send pays a 1 BTCZ fee to the operator, Z-TEXT LLC: probably the cheapest private coffee in the galaxy.<br>
+ On the blockchain, every send is shielded (zk-SNARKs): sender, receiver, amount and message are hidden. Our server can see your test wallet's activity; it forgets what it can (Bee Memory).<br>
+ Want the real thing for your AI agent? <a href="https://github.com/ZKStamp/AgentWallet">I Am Wallet on GitHub</a> · <a href="https://proof.zketernity.app/agent/llms.txt">llms.txt</a> · contact@z-text.com
+ <div class="row" id="keyrow" style="display:none"><button class="ghost" id="bShowKey">Show my wallet key</button><button class="ghost" id="bReset">Forget this test wallet</button></div>
+ <div id="keybox"></div>
+</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var API = "/agent/v1", STORE = "iamwallet_try_v1", POLL_MS = /[?&]fast\b/.test(location.search) ? 1500 : 20000, NEED = 52;
+  var $ = function (id) { return document.getElementById(id); };
+  var st = load(), house = null, busy = false, timer = null, resetArmed = false;
+
+  function load() { try { return JSON.parse(localStorage.getItem(STORE) || "{}") || {}; } catch (e) { return {}; } }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(st)); } catch (e) {} }
+
+  function api(method, path, body) {
+    var h = { "Accept": "application/json" };
+    if (st.key) h["Authorization"] = "Bearer " + st.key;
+    if (body) h["Content-Type"] = "application/json";
+    return fetch(API + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined, cache: "no-store" })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: "server error (" + r.status + ")" }; }); })
+      .catch(function () { return { ok: false, error: "network error, retrying soon" }; });
+  }
+  function say(id, text, cls, spin) {
+    var el = $(id); el.textContent = ""; el.className = "status" + (cls ? " " + cls : "");
+    if (spin) { var s = document.createElement("span"); s.className = "spin"; el.appendChild(s); }
+    el.appendChild(document.createTextNode(text || ""));
+  }
+  function mark(n, mode) { $("s" + n).className = "step" + (mode ? " " + mode : ""); }
+  function pad(n) { return ("00" + n).slice(-3); }
+  function num(x) { var v = parseFloat(x); return isNaN(v) ? 0 : v; }
+
+  function loadHouse() {
+    return fetch("status.json", { cache: "no-store" }).then(function (r) { return r.json(); })
+      .then(function (j) { house = j; fillPick(); }).catch(function () { say("s3s", "Could not load the stamp list, retrying.", "bad"); });
+  }
+  function fillPick() {
+    var sel = $("pick"), keep = sel.value; sel.textContent = "";
+    var free = house.stamps.filter(function (s) { return s.status === "available"; });
+    free.forEach(function (s) {
+      var o = document.createElement("option"); o.value = s.number;
+      o.textContent = "No." + pad(s.number) + " " + s.country + " · " + s.hello + (s.hello_latin !== s.hello ? " (" + s.hello_latin + ")" : "");
+      sel.appendChild(o);
+    });
+    if (!free.length) { var o = document.createElement("option"); o.textContent = "All stamps of this wave are taken. Next wave soon!"; sel.appendChild(o); }
+    if (keep) sel.value = keep;
+  }
+
+  // ---------- actions ----------
+  $("bCreate").onclick = function () {
+    if (busy) return; busy = true; $("bCreate").disabled = true;
+    say("s1s", "Creating your shielded wallet…", "", true);
+    api("POST", "/wallet").then(function (r) {
+      busy = false;
+      if (!r.ok) { $("bCreate").disabled = false; say("s1s", r.error || "failed", "bad"); return; }
+      st = { key: r.key, address: r.address, created: Date.now() }; save();
+      showKey(true); tick();
+    });
+  };
+  $("bAsk").onclick = function () {
+    if (busy || !house) return; var n = parseInt($("pick").value, 10); if (!n) return;
+    busy = true; $("bAsk").disabled = true; say("s3s", "Sending your signed request…", "", true);
+    api("GET", "/inbox?limit=50").then(function (ib) {
+      var seen = (ib.ok ? ib.items : []).map(function (i) { return i.txid; });
+      return api("POST", "/message", { to: house.house_address, text: "STAMP " + n }).then(function (r) {
+        busy = false;
+        if (!r.ok) { $("bAsk").disabled = false; say("s3s", r.error || "failed", "bad"); return; }
+        st.stamp = n; st.askTx = r.txid; st.askAt = Date.now(); st.seen = seen; save(); tick();
+      });
+    });
+  };
+  $("bPay").onclick = function () {
+    if (busy || !st.deal) return; busy = true; $("bPay").disabled = true;
+    say("s4s", "Paying… (10 to 60 seconds)", "", true);
+    api("POST", "/deal/pay", { deal_id: st.deal }).then(function (r) {
+      busy = false;
+      if (!r.ok) { $("bPay").disabled = false; say("s4s", (r.error || "failed") + " · You can press Pay again.", "bad"); return; }
+      st.paidTx = r.txid; st.paidAt = Date.now(); save(); tick();
+    });
+  };
+  $("bShowKey").onclick = function () { showKey(!$("keybox").textContent); };
+  $("bReset").onclick = function () {
+    if (!resetArmed) { resetArmed = true; $("bReset").textContent = "Click again: the wallet and its coins are lost"; return; }
+    try { localStorage.removeItem(STORE); } catch (e) {}
+    location.reload();
+  };
+  function showKey(on) {
+    var b = $("keybox"); b.textContent = "";
+    if (!on || !st.key) return;
+    var p = document.createElement("div"); p.className = "warn";
+    p.textContent = "Your wallet key: it IS the wallet. It is saved only in this browser. Copy it if you want to keep the wallet (for example to give it to your AI agent later). Never share it.";
+    var k = document.createElement("span"); k.className = "key"; k.textContent = st.key;
+    b.appendChild(p); b.appendChild(k);
+  }
+
+  // ---------- the loop ----------
+  function tick() {
+    clearTimeout(timer);
+    var again = function () { if (!st.verdict) timer = setTimeout(tick, POLL_MS); };
+    step().then(again, again);
+  }
+
+  function step() {
+    if (!st.key) {
+      mark(1, "on"); [2, 3, 4, 5].forEach(function (n) { mark(n); });
+      return Promise.resolve();
+    }
+    $("keyrow").style.display = "";
+    mark(1, "done"); $("s1b").textContent = "";
+    say("s1s", "✓ Wallet created: " + st.address.slice(0, 18) + "… (shielded zs address)", "g");
+    return (house ? Promise.resolve() : loadHouse()).then(function () { return api("GET", "/balance"); }).then(function (b) {
+      if (!b.ok) {
+        if (/invalid key/.test(b.error || "")) { say("s2s", "This test wallet no longer exists. Use 'Forget this test wallet' below to start again.", "bad"); }
+        else say("s2s", b.error || "error", "bad");
+        return;
+      }
+      var bal = num(b.balance_btcz), inc = num(b.incoming_unconfirmed_btcz);
+      if (st.deal || st.stamp) {
+        mark(2, "done"); say("s2s", "✓ Balance: " + b.balance_btcz + " BTCZ (" + b.starter_gift_btcz + " are starter coins)", "g");
+      } else if (bal >= NEED) {
+        mark(2, "done"); say("s2s", "✓ Received! Balance: " + b.balance_btcz + " BTCZ", "g");
+      } else {
+        mark(2, "on");
+        if (inc > 0) say("s2s", inc + " BTCZ arriving: waiting for 1 BitcoinZ block (about 2.5 minutes)…", "", true);
+        else if (b.starter_status === "pending") say("s2s", "Your starter coins are on the way (sent every few minutes, max 10 wallets per day). Waiting…", "", true);
+        else say("s2s", "No free starter coins left today. You can send at least " + NEED + " BTCZ to your wallet's t-deposit address: " + b.t_deposit_address, "warn");
+        mark(3); mark(4); mark(5); return;
+      }
+      if (!st.stamp) {
+        mark(3, "on"); $("pick").parentNode.style.display = ""; $("pick").disabled = false; $("bAsk").disabled = busy;
+        mark(4); mark(5);
+        say("s3s", "Pick a stamp. Max 1 stamp per wallet per day.");
+        return;
+      }
+      $("pick").disabled = true; $("bAsk").disabled = true; $("pick").parentNode.style.display = "none";
+      return dealStep();
+    });
+  }
+
+  function dealStep() {
+    return api("GET", "/deal/status" + (st.deal ? "?deal_id=" + encodeURIComponent(st.deal) : "")).then(function (d) {
+      if (!d.ok) { say(st.deal ? "s4s" : "s3s", d.error || "error", "bad"); return; }
+      var tag = "No." + pad(st.stamp), deal = null;
+      (d.deals || []).forEach(function (x) {
+        if (x.you_are === "buyer" && (!house.house_signer || x.seller_signer === house.house_signer) &&
+            (x.description || "").indexOf(tag) >= 0 && (!st.deal || x.deal_id === st.deal)) deal = x;
+      });
+      if (!deal) {
+        mark(3, "on"); mark(4); mark(5);
+        say("s3s", "✓ Request sent for " + tag + ". The house agent answers after 1 BitcoinZ block (usually 3 to 8 minutes)…", "", true);
+        return houseReplies();
+      }
+      if (!st.deal) { st.deal = deal.deal_id; save(); }
+      mark(3, "done"); say("s3s", "✓ The house agent answered with a signed deal offer.", "g");
+      var o = $("offer"); o.textContent = "";
+      var p = document.createElement("p"); p.innerHTML = "";
+      p.appendChild(document.createTextNode("Offer: " + deal.description + " · "));
+      var bb = document.createElement("b"); bb.textContent = deal.price_per_step_btcz + " BTCZ"; p.appendChild(bb);
+      p.appendChild(document.createTextNode(" · seller " + (deal.seller_signer || "").slice(0, 16) + "…"));
+      o.appendChild(p);
+      if (num(deal.price_per_step_btcz) > 50) { mark(4, "on"); say("s4s", "Unexpected price: not paying automatically.", "bad"); $("bPay").disabled = true; return; }
+      if (!deal.paid_steps) {
+        mark(4, "on"); mark(5); $("bPay").disabled = busy;
+        if (!busy) say("s4s", "Ready. If you get 'wait 1 block', your wallet's change is still confirming: press Pay again in 2 to 3 minutes.");
+        return;
+      }
+      mark(4, "done"); $("bPay").disabled = true; say("s4s", "✓ Paid. Payment needs 1 BitcoinZ block before the house agent delivers.", "g");
+      var dl = (deal.deliveries || [])[0];
+      if (!dl) { mark(5, "on"); say("s5s", "Waiting for the delivery (usually 3 to 8 minutes)…", "", true); return; }
+      return verify(deal, dl);
+    });
+  }
+
+  function houseReplies() {
+    return api("GET", "/inbox?limit=50").then(function (ib) {
+      if (!ib.ok) return;
+      var seen = st.seen || [], msg = null;
+      ib.items.forEach(function (i) {
+        if (!msg && i.from_claimed === house.house_address && i.signature_valid && i.text && !/^DEAL1\|/.test(i.text) && seen.indexOf(i.txid) < 0) msg = i;
+      });
+      if (msg) {
+        say("s3s", "The house agent replied: " + msg.text, "warn");
+        var b = document.createElement("button"); b.className = "ghost"; b.textContent = "Choose another stamp";
+        b.onclick = function () { delete st.stamp; save(); house = null; tick(); };
+        $("s3s").appendChild(document.createElement("br")); $("s3s").appendChild(b);
+      }
+    });
+  }
+
+  function verify(deal, dl) {
+    if (st.verdict) { showResult(dl, st.verdict); return Promise.resolve(); }
+    var link = dl.link || "";
+    var base = location.origin + "/stamps/img/";
+    if (link.indexOf(base) !== 0 && link.indexOf("https://proof.zketernity.app/stamps/img/") !== 0) {
+      mark(5, "on"); say("s5s", "Delivery received, but the link is not a stamp image of this site: not downloading it.", "bad"); return Promise.resolve();
+    }
+    var local = "img/" + link.split("/stamps/img/")[1];
+    mark(5, "on"); say("s5s", "Delivery received! Downloading the image and computing its SHA-256 in your browser…", "", true);
+    return fetch(local, { cache: "no-store" }).then(function (r) { return r.arrayBuffer(); })
+      .then(function (buf) { return crypto.subtle.digest("SHA-256", buf); })
+      .then(function (h) {
+        var hex = Array.prototype.map.call(new Uint8Array(h), function (x) { return ("0" + x.toString(16)).slice(-2); }).join("");
+        return api("POST", "/deal/check", { deal_id: deal.deal_id, fingerprint: hex }).then(function (c) {
+          if (!c.ok) { say("s5s", c.error || "check failed", "bad"); return; }
+          st.verdict = { match: c.match, mine: hex, stated: c.fingerprint_sha256, txid: c.txid, local: local }; save();
+          showResult(dl, st.verdict);
+        });
+      });
+  }
+
+  function showResult(dl, v) {
+    clearTimeout(timer);
+    mark(5, "done");
+    var r = $("result"); r.textContent = "";
+    var m = document.createElement("div"); m.className = v.match ? "match" : "match bad";
+    m.textContent = v.match ? "✓ MATCH" : "✗ NO MATCH"; r.appendChild(m);
+    var t = document.createElement("p");
+    t.textContent = v.match ? "The image you downloaded is exactly the stamp the house agent delivered and signed. It's yours: one of a kind."
+                            : "The image differs from what the seller signed. Contact contact@z-text.com.";
+    r.appendChild(t);
+    var img = document.createElement("img"); img.src = v.local; img.alt = "Your Hello World stamp"; r.appendChild(img);
+    var f = document.createElement("p"); f.className = "m";
+    f.appendChild(document.createTextNode("Your browser's SHA-256: ")); var c1 = document.createElement("code"); c1.textContent = v.mine; f.appendChild(c1);
+    f.appendChild(document.createElement("br"));
+    f.appendChild(document.createTextNode("Seller's signed SHA-256: ")); var c2 = document.createElement("code"); c2.textContent = v.stated; f.appendChild(c2);
+    r.appendChild(f);
+    var nx = document.createElement("p");
+    nx.innerHTML = 'The house agent also stamps the fingerprint on BitcoinZ with Proof-100: see it in the <a href="./">gallery</a> in a few minutes. ' +
+                   'Liked it? Give the same wallet to your AI agent: <a href="https://github.com/ZKStamp/AgentWallet">I Am Wallet on GitHub</a>.';
+    r.appendChild(nx);
+    say("s5s", "");
+  }
+
+  if (st.key) showKey(false);
+  tick();
+})();
+</script>
+</body>
+</html>

@@ -223,6 +223,15 @@ def write_gallery(con, cat, c, me):
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(page)
     os.replace(tmp, os.path.join(c["gallery_dir"], "index.html"))
+    # status.json for the browser playground (try.html): public data only, never the owner
+    status = {"house_address": me, "house_signer": core.signer_for_key(c["key"]), "price_btcz": PRICE, "updated": core.iso(core.now()),
+              "stamps": [{"number": s["number"], "country": s["country"], "hello": s["hello"],
+                          "hello_latin": s["hello_latin"], "file": s["file"], "sha256": s["sha256"],
+                          "status": rows[s["number"]][1]} for s in cat["stamps"]]}
+    tmp = os.path.join(c["gallery_dir"], "status.json.tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(status, f, ensure_ascii=False)
+    os.replace(tmp, os.path.join(c["gallery_dir"], "status.json"))
 
 
 PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -241,6 +250,7 @@ details{font-size:.75em;color:#a8b8af}code{word-break:break-all;color:#cfe}a{col
 <p class="g"><b>ZKStamp · I Am Wallet</b></p>
 <h1>Hello World Stamps · Series 1</h1>
 <p class="m">One stamp per country, numbered by population. One of a kind: 195 in the world. <b class="g">{SOLD} of {TOTAL}</b> released stamps sold. Owners are never shown.</p>
+<div class="box" style="border-color:#1a7f4b"><b>👤 Human? Try it in your browser:</b> free test wallet, free starter coins, buy a stamp, check the proof. No install. <a href="try.html" style="display:inline-block;background:#1a7f4b;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:700;margin-left:6px">Try it ▶</a></div>
 <div class="box"><b>How to buy (for AI agents, 50 BTCZ):</b><br>
 1. With an <a href="https://github.com/ZKStamp/AgentWallet">I Am Wallet</a> wallet, send_message to the house agent: <code>STAMP India</code> (or a number, or <code>STAMP LIST</code>).<br>
 2. The house agent answers with a deal offer. 3. deal_pay. 4. You receive the stamp (link + SHA-256), stamped on BitcoinZ.<br>
