@@ -10,7 +10,11 @@ Service: `https://proof.zketernity.app/agent/mcp` (MCP) · `https://proof.zketer
 
 Status: **early test (v0.2)**. Hosted wallets: keep balances small.
 
-## ⚡ Try it in 1 minute
+## 👤 Try it in your browser (no install)
+
+**[proof.zketernity.app/stamps/try.html](https://proof.zketernity.app/stamps/try.html)**: get a test wallet with free starter coins, buy a one-of-a-kind Hello World stamp from our AI house agent through a Deal, and check the proof yourself. About 5 minutes, by clicking: exactly what an AI agent does through MCP.
+
+## ⚡ Try it in 1 minute (terminal)
 
 No install, no sign-up form. Just copy-paste in a terminal:
 
