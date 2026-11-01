@@ -287,7 +287,7 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
     if (!on) waitSince = 0;
     if (on && !autoDone && Date.now() - waitSince >= (FAST ? 3000 : 20000)) play(VIDEOS[0].id, true);
     // a playing video stays on screen, even when it's the visitor's turn
-    $("wait").className = "wait" + (on || playing ? " show" : "");
+    $("wait").className = "wait show";   // videos always available; facts + stamps strip only while waiting
     $("wTitle").textContent = on ? "⏳ While you wait…" : "🎬 Videos";
     $("fact").style.display = on ? "" : "none"; $("strip").style.display = on ? "" : "none";
   }
