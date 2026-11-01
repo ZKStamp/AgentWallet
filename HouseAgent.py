@@ -155,8 +155,7 @@ def run():
             with con:
                 con.execute("INSERT OR IGNORE INTO house_seen(txid, at) VALUES (?,?)", (it["txid"], core.iso(core.now())))
             continue
-        if not (isinstance(it.get("confirmations"), int) and it["confirmations"] >= 1):
-            continue      # wait for 1 confirmation
+        # answered at 0 confirmations (1 Nov): an offer costs nothing to the house; payment still needs 1 block before delivery
         if sent:
             break
         buyer, signer, what = it["from_claimed"], it["signer"], m.group(1).strip()

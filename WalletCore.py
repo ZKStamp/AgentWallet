@@ -26,6 +26,8 @@ STARTER_PER_DAY = 10                # max starter grants per UTC day
 GIFT_DEAL_MAX = Decimal("100")      # starter (gift) coins usable for deal payments, per wallet, in total
 GLOBAL_SENDS_PER_MINUTE = 30        # safety cap across ALL wallets (29 Oct)
 POOL_MAX_PER_DAY = STARTER_AMOUNT * STARTER_PER_DAY
+STARTER_PIECES = 3                  # starter arrives as separate coins: a wallet can send again without waiting 1 block (1 Nov)
+READY_WALLETS = 2                   # pre-funded wallets kept ready, so a new wallet has its starter coins at once (1 Nov)
 SIGNUPS_PER_IP_MINUTE = 1
 SIGNUPS_PER_IP_DAY = 5
 FUNDING_TIP = ("Coming from an exchange, or from a wallet that only sends to t-addresses (like Coinomi)? Send to your t_deposit_address: "
@@ -85,7 +87,8 @@ def db():
                 "ALTER TABLE sends ADD COLUMN gift_used TEXT",
                 "ALTER TABLE accounts ADD COLUMN gift_btcz TEXT",
                 "ALTER TABLE accounts ADD COLUMN gift_deal_used TEXT NOT NULL DEFAULT '0'",
-                "ALTER TABLE accounts ADD COLUMN t_address TEXT"):
+                "ALTER TABLE accounts ADD COLUMN t_address TEXT",
+                "ALTER TABLE accounts ADD COLUMN starter_pieces INTEGER NOT NULL DEFAULT 3"):
         try:
             con.execute(sql)
         except sqlite3.OperationalError:
@@ -209,12 +212,22 @@ def create_wallet(ip):
         con.close()
         return {"ok": False, "error": "too many new wallets from your network, try later"}
     key = "aw_" + secrets.token_urlsafe(32)
-    address = chain.new_z_address()
+    address = None
     with con:
-        given = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status IN ('pending','sent')").fetchone()[0]
-        starter = "pending" if given < STARTER_TOTAL else "none"
-        con.execute("INSERT INTO accounts(key_hash, address, created_at, ip_hash, starter_status) VALUES (?,?,?,?,?)",
-                    (hash_key(key), address, iso(t), ih, starter))
+        done_today = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status='sent' AND substr(starter_at,1,10)=?",
+                                 (today(),)).fetchone()[0]
+        if done_today < STARTER_PER_DAY:      # a pre-funded wallet: starter coins already inside, confirmed
+            row = con.execute("SELECT id, address FROM accounts WHERE starter_status='ready' AND frozen=0 ORDER BY id LIMIT 1").fetchone()
+            if row and con.execute("UPDATE accounts SET key_hash=?, created_at=?, ip_hash=?, starter_status='sent', starter_at=? "
+                                   "WHERE id=? AND starter_status='ready'", (hash_key(key), iso(t), ih, iso(t), row[0])).rowcount == 1:
+                address, starter = row[1], "ready"
+    if not address:
+        address = chain.new_z_address()
+        with con:
+            given = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status IN ('pending','sent','pool','ready')").fetchone()[0]
+            starter = "pending" if given < STARTER_TOTAL else "none"
+            con.execute("INSERT INTO accounts(key_hash, address, created_at, ip_hash, starter_status, starter_pieces) VALUES (?,?,?,?,?,0)",
+                        (hash_key(key), address, iso(t), ih, starter))
     queue = None
     if starter == "pending":
         queue = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status='pending'").fetchone()[0]
@@ -222,7 +235,10 @@ def create_wallet(ip):
     out = {"ok": True, "key": key, "address": address,
            "note": "Save your key now: it is shown only once. It controls this wallet.",
            "rules": rules()}
-    if starter == "pending":
+    if starter == "ready":
+        out["starter"] = ("Your %s free starter BTCZ are already in your wallet, confirmed and ready to use (as %d separate coins, "
+                          "so you can send several times without waiting for a block)." % (STARTER_AMOUNT, STARTER_PIECES))
+    elif starter == "pending":
         out["starter"] = ("You are in the starter queue (position %d). %s BTCZ will arrive automatically, usually within minutes; "
                           "max %d starter wallets per day." % (queue, STARTER_AMOUNT, STARTER_PER_DAY))
     else:
@@ -539,46 +555,89 @@ def inbox(key, limit=20):
 
 # ---------------- starter grants (run by GrantStarters.py) ----------------
 
+def _pieces():
+    """The starter split into STARTER_PIECES coins, e.g. 1000 -> 334, 333, 333."""
+    n = max(int(STARTER_PIECES), 1)
+    base = (STARTER_AMOUNT / n).quantize(Decimal("1"), rounding="ROUND_FLOOR")
+    return [STARTER_AMOUNT - base * (n - 1)] + [base] * (n - 1)
+
+
 def grant_starters(max_now=STARTER_PER_DAY):
-    """Send starter funds to queued wallets, within the daily caps. Returns a list of log lines."""
+    """Send starter funds, within the daily caps. Returns a list of log lines.
+    Each run sends ONE piece to every wallet still waiting for one, in ONE transaction
+    (the pool's change is unconfirmed after a send, so a second send would fail).
+    It also keeps READY_WALLETS pre-funded wallets ready for create_wallet."""
     log = []
     con = db()
     if is_frozen_all(con):
         con.close()
         return ["frozen: no grants"]
+    pieces = _pieces()
+    with con:   # wallets queued before 1 Nov got the column default: they have no piece yet
+        con.execute("UPDATE accounts SET starter_pieces=0 WHERE starter_status='pending' AND starter_pieces>0")
+    # 1. pre-funded wallets whose pieces are all confirmed become ready
+    for acc_id, addr in con.execute("SELECT id, address FROM accounts WHERE starter_status='pool' AND starter_pieces>=?",
+                                    (len(pieces),)).fetchall():
+        if chain.balance(addr) >= STARTER_AMOUNT:
+            with con:
+                con.execute("UPDATE accounts SET starter_status='ready' WHERE id=? AND starter_status='pool'", (acc_id,))
+            log.append("wallet %d ready (pre-funded)" % acc_id)
+    # 2. who gets a piece now: wallets already started first, then the queue (daily cap), then new pre-funded wallets
+    targets = con.execute("SELECT id, address, starter_pieces, starter_status FROM accounts WHERE starter_status IN ('sent','pool') "
+                          "AND starter_pieces>0 AND starter_pieces<? AND frozen=0 ORDER BY id", (len(pieces),)).fetchall()
     done_today = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status='sent' AND substr(starter_at,1,10)=?",
                              (today(),)).fetchone()[0]
     room = min(STARTER_PER_DAY - done_today, max_now)
-    if room <= 0:
-        con.close()
-        return ["daily starter cap reached"]
     if (done_today + room) * STARTER_AMOUNT > POOL_MAX_PER_DAY:
         room = int(POOL_MAX_PER_DAY / STARTER_AMOUNT) - done_today
-    queue = con.execute("SELECT id, address FROM accounts WHERE starter_status='pending' AND frozen=0 ORDER BY id LIMIT ?",
-                        (max(room, 0),)).fetchall()
-    if not queue:
+    if room > 0:
+        targets += con.execute("SELECT id, address, starter_pieces, starter_status FROM accounts WHERE starter_status='pending' "
+                               "AND frozen=0 ORDER BY id LIMIT ?", (room,)).fetchall()
+    elif not targets:
+        log.append("daily starter cap reached")
+    given = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status IN ('pending','sent','pool','ready')").fetchone()[0]
+    in_pool = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status IN ('pool','ready')").fetchone()[0]
+    queued = con.execute("SELECT COUNT(*) FROM accounts WHERE starter_status='pending'").fetchone()[0]
+    starting = con.execute("SELECT id, address, starter_pieces, starter_status FROM accounts WHERE starter_status='pool' "
+                           "AND starter_pieces=0 ORDER BY id").fetchall()
+    if not starting and in_pool < READY_WALLETS and given < STARTER_TOTAL and not queued:
+        addr = chain.new_z_address()
+        with con:
+            cur = con.execute("INSERT INTO accounts(key_hash, address, created_at, ip_hash, starter_status, starter_pieces) "
+                              "VALUES (?,?,?,?,'pool',0)", ("pool:" + secrets.token_hex(16), addr, iso(now()), "pool"))
+        starting = [(cur.lastrowid, addr, 0, "pool")]
+        log.append("new pre-funded wallet %d" % cur.lastrowid)
+    targets += starting
+    if not targets:
         con.close()
-        return ["queue empty"]
+        return log or ["queue empty"]
     pool = config()["pool_address"]
-    # Pay the whole batch in ONE transaction: the pool's change is unconfirmed
-    # after a send, so a second send in the same block would fail.
-    affordable = int((chain.balance(pool) - chain.NET_FEE) / STARTER_AMOUNT)
-    queue = queue[:max(affordable, 0)]
-    if not queue:
+    avail = chain.balance(pool) - chain.NET_FEE
+    batch, total = [], Decimal("0")
+    for t in targets:
+        amt = pieces[t[2]]
+        if total + amt > avail:
+            break
+        batch.append((t, amt))
+        total += amt
+    if not batch:
         con.close()
-        return ["pool too low (or its last change is not confirmed yet)"]
-    memo = codecs.ACTIVE.encode(pool, "Welcome to I Am Wallet. %s BTCZ starter coins: a gift for messages, fees and small deals (up to %s BTCZ) "
-                                      "inside I Am Wallet. They cannot be withdrawn. Rules: call balance." % (STARTER_AMOUNT, GIFT_DEAL_MAX))
+        return log + ["pool too low (or its last change is not confirmed yet)"]
+    memo = codecs.ACTIVE.encode(pool, "Welcome to I Am Wallet. %s BTCZ starter coins (in %d parts): a gift for messages, fees and small deals (up to %s BTCZ) "
+                                      "inside I Am Wallet. They cannot be withdrawn. Rules: call balance." % (STARTER_AMOUNT, len(pieces), GIFT_DEAL_MAX))
     try:
-        txid = chain.send(pool, [{"address": a, "amount": STARTER_AMOUNT, "memo": memo} for _, a in queue])
+        txid = chain.send(pool, [{"address": t[1], "amount": amt, "memo": memo} for t, amt in batch])
     except chain.ChainError as e:
         con.close()
-        return ["grant batch failed: %s" % e]
+        return log + ["grant batch failed: %s" % e]
     with con:
-        for acc_id, _ in queue:
-            con.execute("UPDATE accounts SET starter_status='sent', starter_txid=?, starter_at=?, "
-                        "gift_btcz=CAST(COALESCE(gift_btcz,'0') AS REAL)+? WHERE id=?",
-                        ("h:" + h(txid)[:62], iso(now()), float(STARTER_AMOUNT), acc_id))
-    log.append("starter sent to accounts %s in %s" % ([i for i, _ in queue], txid))
+        for t, amt in batch:
+            acc_id, _, done, status = t
+            con.execute("UPDATE accounts SET starter_pieces=starter_pieces+1, "
+                        "gift_btcz=CAST(COALESCE(gift_btcz,'0') AS REAL)+? WHERE id=?", (float(amt), acc_id))
+            if status == "pending":
+                con.execute("UPDATE accounts SET starter_status='sent', starter_txid=?, starter_at=? WHERE id=?",
+                            ("h:" + h(txid)[:62], iso(now()), acc_id))
+    log.append("starter piece sent to accounts %s in %s" % ([t[0] for t, _ in batch], txid))
     con.close()
     return log

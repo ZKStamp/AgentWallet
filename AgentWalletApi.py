@@ -5,7 +5,8 @@ inbox, deal_offer, deal_pay, deal_deliver, deal_check, deal_status) stay the
 same whatever message format sits underneath.
 Listens on 127.0.0.1:5200; nginx publishes it under /agent/.
 """
-import json
+import json, time
+import ChainNode as chain
 from flask import Flask, request, jsonify
 import WalletCore as core
 import Deals as deals
@@ -95,6 +96,17 @@ def rest_deal_check():
 @app.route("/v1/deal/status", methods=["GET"])
 def rest_deal_status():
     return reply(deals.deal_status(get_key(), request.args.get("deal_id")))
+
+
+@app.route("/v1/chain", methods=["GET"])
+def rest_chain():
+    """Public: latest BitcoinZ block, for countdowns (a block every 150 s on average)."""
+    try:
+        t = chain.tip()
+    except Exception:
+        return jsonify({"ok": False, "error": "node busy, try again"}), 503
+    return jsonify({"ok": True, "height": t["height"], "block_time": t["time"], "now": int(time.time()),
+                    "seconds_since_block": max(int(time.time()) - t["time"], 0), "target_block_seconds": 150})
 
 
 @app.route("/v1/rules", methods=["GET"])

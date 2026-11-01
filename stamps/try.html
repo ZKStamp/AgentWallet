@@ -4,21 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Try I Am Wallet · Buy a Hello World stamp</title>
-<meta name="description" content="Try I Am Wallet in your browser: create a free test wallet, get free starter BTCZ, buy a one-of-a-kind Hello World stamp from an AI house agent through a private BitcoinZ deal, and check the proof yourself.">
+<meta name="description" content="Try I Am Wallet in your browser: get a free test wallet with free starter BTCZ, buy a one-of-a-kind Hello World stamp from an AI house agent through a private BitcoinZ deal, and check the proof yourself.">
 <style>
 :root{--bg:#0c100e;--card:#16201b;--line:#24382c;--g:#4ade80;--dg:#1a7f4b;--m:#a8b8af;--warn:#e7c35a;--bad:#f08080}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
-.w{max-width:760px;margin:0 auto;padding:24px 16px 48px}
+.w{max-width:760px;margin:0 auto;padding:20px 16px 48px}
 h1{font-size:1.8em;margin:.2em 0 .3em}a{color:var(--g)}.m{color:var(--m)}.g{color:var(--g)}
-.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:14px;opacity:.45}
-.step.on{opacity:1;border-color:var(--dg)}.step.done{opacity:.85}
-.step h2{font-size:1.05em;margin:0 0 6px;display:flex;gap:10px;align-items:center}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-top:12px;opacity:.45;transition:opacity .3s,border-color .3s}
+.step.on{opacity:1;border-color:var(--dg);box-shadow:0 0 0 1px var(--dg)}.step.done{opacity:.85}
+.step h2{font-size:1.02em;margin:0 0 6px;display:flex;gap:10px;align-items:center}
 .n{display:inline-flex;width:28px;height:28px;border-radius:50%;background:#24382c;align-items:center;justify-content:center;font-size:.9em;flex:none}
-.on .n{background:var(--dg)}.done .n{background:var(--dg)}
+.on .n,.done .n{background:var(--dg)}
+.eta{margin-left:auto;font-size:.75em;font-weight:400;color:var(--m);white-space:nowrap}
 button{background:var(--dg);color:#fff;border:0;border-radius:8px;padding:11px 18px;font-size:1em;font-weight:700;cursor:pointer}
 button:disabled{background:#2c3a32;color:#7d8d84;cursor:default}
 button.ghost{background:transparent;border:1px solid var(--line);color:var(--m);font-weight:400;padding:7px 12px;font-size:.85em}
+.on button:not(:disabled):not(.ghost){animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(74,222,128,.25)}}
 select{background:#0f1612;color:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:1em;max-width:100%}
 code,.key{word-break:break-all;color:#cfe;font-size:.85em}
 .key{display:block;background:#0f1612;border:1px dashed var(--warn);border-radius:8px;padding:10px;margin:8px 0}
@@ -26,52 +29,91 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
 .status{margin-top:8px;color:var(--m);font-size:.92em}
 .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:s 1s linear infinite;vertical-align:-1px;margin-right:6px}
 @keyframes s{to{transform:rotate(360deg)}}
-.big{font-size:1.4em;font-weight:800}
-.result img{width:100%;max-width:340px;border-radius:8px;display:block;margin:10px 0}
 .match{font-size:1.5em;font-weight:900;color:var(--g)}
+.result img{width:100%;max-width:340px;border-radius:8px;display:block;margin:10px 0}
 .note{font-size:.85em;color:var(--m);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:18px}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+/* sticky live panel: wallet + blockchain */
+.live{position:sticky;top:0;z-index:5;background:rgba(12,16,14,.96);backdrop-filter:blur(4px);border-bottom:1px solid var(--line);margin:0 -16px;padding:10px 16px;display:none}
+.live.show{display:block}
+.lw{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline}
+.bal{font-size:1.5em;font-weight:800}.bal small{font-size:.5em;color:var(--m);font-weight:400}
+.arr{color:var(--warn);font-weight:700}.pill{font-size:.78em;color:var(--m)}
+.flash{animation:fl 1.2s ease-out}@keyframes fl{0%{color:var(--g);transform:scale(1.08)}100%{transform:scale(1)}}
+.bar{height:6px;background:#24382c;border-radius:4px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--g);width:0;transition:width 1s linear}
+.blk{font-size:.8em;color:var(--m);margin-top:3px}
+/* while you wait */
+.wait{display:none;margin-top:12px;background:#111a15;border:1px dashed var(--line);border-radius:12px;padding:12px 16px}
+.wait.show{display:block}.fact{min-height:3.2em;transition:opacity .4s}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:6px 0}.strip img{height:96px;border-radius:5px;flex:none}
+.vid{position:relative;width:100%;max-width:300px;aspect-ratio:9/16;margin-top:8px}.vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:8px}
+.log{font-size:.82em;color:var(--m);margin:6px 0 0;padding-left:18px}.log li{margin:2px 0}.log a{font-size:.95em}
 </style>
 </head>
 <body>
 <div class="w">
+<div class="live" id="live">
+ <div class="lw">
+  <span class="bal" id="lBal">0 <small>BTCZ</small></span>
+  <span class="arr" id="lArr"></span>
+  <span class="pill" id="lGift"></span>
+  <span class="pill" id="lAddr"></span>
+ </div>
+ <div class="bar"><i id="lBar"></i></div>
+ <div class="blk" id="lBlk">Connecting to BitcoinZ…</div>
+</div>
+
 <p class="g"><b>ZKStamp · I Am Wallet</b> · <a href="./">Stamp gallery</a></p>
 <h1>Try it in your browser</h1>
-<p class="m">Do what an AI agent does, by clicking: create a private BitcoinZ wallet, get free starter coins, buy a one-of-a-kind <b>Hello World stamp</b> from our AI house agent through a Deal, and check the proof yourself. No install, no sign-up, no email.</p>
-<p class="m">⏱ About <b>15 to 20 minutes</b> in total, mostly waiting for BitcoinZ blocks (one every 2.5 minutes). You can close this page and come back: it remembers your test wallet in this browser.</p>
+<p class="m">Do what an AI agent does, by clicking: get a private BitcoinZ wallet with free starter coins, buy a one-of-a-kind <b>Hello World stamp</b> from our AI house agent through a Deal, and check the proof yourself. No install, no sign-up, no email.</p>
+<p class="m">⏱ About <b>5 minutes</b>. One wait is real: your payment needs <b>1 BitcoinZ block</b> (one every 2.5 minutes on average) before the stamp is delivered. The bar on top shows it live. You can close the page and come back.</p>
+<div class="row"><button class="ghost" id="bAlert">🔔 Alert me when it's my turn</button></div>
 
 <div class="step" id="s1">
- <h2><span class="n">1</span>Create your test wallet</h2>
+ <h2><span class="n">1</span>Get your test wallet<span class="eta">a few seconds</span></h2>
  <div id="s1b"><button id="bCreate">Create my wallet</button></div>
  <div class="status" id="s1s"></div>
 </div>
 
 <div class="step" id="s2">
- <h2><span class="n">2</span>Receive free starter coins (1,000 BTCZ)</h2>
- <div id="s2b" class="m">The first 100 wallets get them, max 10 per day. They arrive by themselves.</div>
+ <h2><span class="n">2</span>Free starter coins (1,000 BTCZ)<span class="eta" id="e2">usually ready at once</span></h2>
+ <div class="m">The first 100 wallets get them, max 10 per day.</div>
  <div class="status" id="s2s"></div>
 </div>
 
 <div class="step" id="s3">
- <h2><span class="n">3</span>Ask the house agent for a stamp</h2>
- <div class="m">Your wallet sends a signed, private message to the AI house agent: <code>STAMP &lt;number&gt;</code>. Costs 1 BTCZ (paid with starter coins).</div>
+ <h2><span class="n">3</span>Ask the house agent for a stamp<span class="eta">~1 minute</span></h2>
+ <div class="m">Your wallet sends a signed, private message to the AI house agent: <code>STAMP &lt;number&gt;</code>. Costs 1 BTCZ.</div>
  <div class="row"><select id="pick" disabled><option>Loading stamps…</option></select><button id="bAsk" disabled>Send the request</button></div>
  <div class="status" id="s3s"></div>
 </div>
 
 <div class="step" id="s4">
- <h2><span class="n">4</span>Pay the deal offer (50 BTCZ)</h2>
- <div class="m">The house agent answers with a signed Deal offer. You pay one step: 50 BTCZ + 1 BTCZ fee, starter coins work.</div>
+ <h2><span class="n">4</span>Pay the deal offer (50 BTCZ)<span class="eta">~30 seconds</span></h2>
+ <div class="m">The house agent answers with a signed Deal offer. You pay: 50 BTCZ + 1 BTCZ fee, starter coins work.</div>
  <div id="offer"></div>
  <div class="row"><button id="bPay" disabled>Pay 50 BTCZ</button></div>
  <div class="status" id="s4s"></div>
 </div>
 
 <div class="step" id="s5">
- <h2><span class="n">5</span>Receive the stamp and check the proof</h2>
- <div class="m">The house agent delivers a link + the stamp's SHA-256 fingerprint, signed, inside a shielded transaction. Your browser downloads the image, computes its SHA-256 itself, and checks it: MATCH or NO MATCH.</div>
+ <h2><span class="n">5</span>Receive the stamp, check the proof<span class="eta">1 block + 30 s</span></h2>
+ <div class="m">After your payment is in a block, the house agent delivers a link + the stamp's SHA-256 fingerprint, signed. Your browser downloads the image, computes the SHA-256 itself and checks it.</div>
  <div class="result" id="result"></div>
  <div class="status" id="s5s"></div>
+</div>
+
+<div class="wait" id="wait">
+ <b>⏳ While you wait…</b>
+ <p class="fact" id="fact"></p>
+ <div class="strip" id="strip"></div>
+ <div class="row"><button class="ghost" id="bVid">▶ Watch two AI agents make a deal (54 s)</button></div>
+ <div id="vid"></div>
+</div>
+
+<div class="note">
+ <b>📜 What happened so far</b> <span style="font-size:.9em">(tx links open the BitcoinZ explorer: shielded, so it shows the transaction exists, not who paid whom or how much)</span>
+ <ol class="log" id="log"><li>Nothing yet.</li></ol>
 </div>
 
 <div class="note">
@@ -86,9 +128,12 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
 <script>
 (function () {
   "use strict";
-  var API = "/agent/v1", STORE = "iamwallet_try_v1", POLL_MS = /[?&]fast\b/.test(location.search) ? 1500 : 20000, NEED = 52;
+  var FAST = /[?&]fast\b/.test(location.search);
+  var API = "/agent/v1", STORE = "iamwallet_try_v1", POLL_MS = FAST ? 1500 : 8000, NEED = 52, BLOCK = 150;
+  var EXPLORER = "https://explorer.btcz.rocks/tx/";
   var $ = function (id) { return document.getElementById(id); };
   var st = load(), house = null, busy = false, timer = null, resetArmed = false;
+  var chainInfo = null, chainAt = 0, lastBal = null, turn = "", titleTimer = null, baseTitle = document.title;
 
   function load() { try { return JSON.parse(localStorage.getItem(STORE) || "{}") || {}; } catch (e) { return {}; } }
   function save() { try { localStorage.setItem(STORE, JSON.stringify(st)); } catch (e) {} }
@@ -109,10 +154,126 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
   function mark(n, mode) { $("s" + n).className = "step" + (mode ? " " + mode : ""); }
   function pad(n) { return ("00" + n).slice(-3); }
   function num(x) { var v = parseFloat(x); return isNaN(v) ? 0 : v; }
+  function fmt(x) { return num(x).toLocaleString("en-US", { maximumFractionDigits: 4 }); }
+  function clock(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
 
+  // ---------- activity log ----------
+  function logEv(key, text, txid) {
+    st.log = st.log || [];
+    if (st.log.some(function (e) { return e.k === key; })) return;
+    st.log.push({ k: key, t: Date.now(), x: text, tx: txid || "" }); save(); drawLog();
+  }
+  function drawLog() {
+    var ol = $("log"); ol.textContent = "";
+    var L = st.log || [];
+    if (!L.length) { var li0 = document.createElement("li"); li0.textContent = "Nothing yet."; ol.appendChild(li0); return; }
+    L.forEach(function (e) {
+      var li = document.createElement("li"), d = new Date(e.t);
+      li.appendChild(document.createTextNode(("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + " · " + e.x));
+      if (e.tx) {
+        li.appendChild(document.createTextNode(" · "));
+        var a = document.createElement("a"); a.href = EXPLORER + e.tx; a.target = "_blank"; a.rel = "noopener";
+        a.textContent = "tx " + e.tx.slice(0, 10) + "… ↗"; li.appendChild(a);
+      }
+      ol.appendChild(li);
+    });
+  }
+
+  // ---------- alerts: notification + sound + blinking tab ----------
+  $("bAlert").onclick = function () {
+    st.alerts = true; save(); beep(true);
+    if ("Notification" in window && Notification.permission === "default") {
+      try { Notification.requestPermission().then(alertLabel); } catch (e) { alertLabel(); }
+    } else alertLabel();
+  };
+  function alertLabel() {
+    var b = $("bAlert");
+    b.textContent = st.alerts ? "🔔 Alerts on: sound + blinking tab" + (("Notification" in window && Notification.permission === "granted") ? " + notification" : "") : "🔔 Alert me when it's my turn";
+  }
+  var actx = null;
+  function beep(quiet) {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.18].forEach(function (d, i) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.frequency.value = i ? 1046 : 784; g.gain.value = quiet ? 0.02 : 0.12;
+        o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + d); o.stop(actx.currentTime + d + 0.15);
+      });
+    } catch (e) {}
+  }
+  function yourTurn(key, text) {
+    if (turn === key) return;
+    turn = key;
+    if (!st.alerts || !document.hidden) return;
+    beep(false);
+    try { if ("Notification" in window && Notification.permission === "granted") new Notification("I Am Wallet · your turn", { body: text }); } catch (e) {}
+    clearInterval(titleTimer); var on = false;
+    titleTimer = setInterval(function () { on = !on; document.title = on ? "🔔 " + text : baseTitle; }, 1000);
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { clearInterval(titleTimer); document.title = baseTitle; } });
+
+  // ---------- live panel: wallet + block countdown ----------
+  function showWallet(b) {
+    $("live").className = "live show";
+    var bal = num(b.balance_btcz), inc = num(b.incoming_unconfirmed_btcz);
+    var el = $("lBal"); el.textContent = fmt(bal) + " "; var sm = document.createElement("small"); sm.textContent = "BTCZ"; el.appendChild(sm);
+    if (lastBal !== null && bal !== lastBal) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+    lastBal = bal;
+    $("lArr").textContent = inc > 0 ? "+" + fmt(inc) + " arriving (in the next block)" : (inc < 0 ? fmt(inc) + " leaving (in the next block)" : "");
+    $("lGift").textContent = num(b.starter_gift_btcz) > 0 ? "🎁 " + fmt(b.starter_gift_btcz) + " starter" : "";
+    $("lAddr").textContent = "🔒 " + (b.address || st.address || "").slice(0, 12) + "…";
+  }
+  function pollChain() {
+    return api("GET", "/chain").then(function (c) { if (c.ok) { chainInfo = c; chainAt = Date.now(); } });
+  }
+  function drawChain() {
+    if (!chainInfo) return;
+    var since = chainInfo.seconds_since_block + (Date.now() - chainAt) / 1000;
+    $("lBar").style.width = Math.min(100, since / BLOCK * 100) + "%";
+    var txt = "⛓ BitcoinZ block #" + chainInfo.height.toLocaleString("en-US") + " found " + clock(since) + " ago · ";
+    txt += since < BLOCK ? "next block expected in ~" + clock(BLOCK - since) : "next block: any second now (blocks are random, sometimes 5+ minutes)";
+    $("lBlk").textContent = txt;
+    if (st.paidTx && !st.verdict && st.lastHeight && chainInfo.height > st.lastHeight) logEv("blk" + chainInfo.height, "New BitcoinZ block #" + chainInfo.height.toLocaleString("en-US"));
+    st.lastHeight = chainInfo.height;
+  }
+  setInterval(drawChain, 1000);
+
+  // ---------- while you wait ----------
+  var FACTS = [
+    "Your request and your payment are shielded transactions: on the blockchain, nobody can see who paid whom, or how much.",
+    "The house agent is software, not a person. It reads your signed message, makes an offer and delivers by itself, 24/7.",
+    "Why wait for a block? The house agent delivers only after your payment is written in a block. No escrow, no trust: the order is enforced in code.",
+    "Each stamp is one of a kind: 195 countries, one stamp each, numbered by population. No. 001 is India: नमस्ते.",
+    "Every message is signed (Ed25519). The house agent knows your messages come from the same signer, without knowing who you are.",
+    "The 1 BTCZ fee per send buys the operator a coffee: probably the cheapest private coffee in the galaxy.",
+    "After the sale, the house agent stamps your stamp's fingerprint on BitcoinZ with Proof-100: anyone can check it, forever.",
+    "AI agents use the same wallet through MCP: they do exactly what you are clicking now, by themselves."
+  ];
+  var factI = 0;
+  function rotateFact() { var f = $("fact"); f.style.opacity = 0; setTimeout(function () { f.textContent = FACTS[factI++ % FACTS.length]; f.style.opacity = 1; }, 400); }
+  rotateFact(); setInterval(rotateFact, 9000);
+  function waiting(on) { $("wait").className = "wait" + (on ? " show" : ""); }
+  $("bVid").onclick = function () {
+    var v = $("vid"); if (v.firstChild) return;
+    var d = document.createElement("div"); d.className = "vid";
+    var f = document.createElement("iframe"); f.src = "https://www.youtube-nocookie.com/embed/cX-odrxM86M?autoplay=1&mute=1";
+    f.allow = "autoplay; encrypted-media; picture-in-picture"; f.setAttribute("allowfullscreen", ""); f.title = "Two AI agents make a deal";
+    d.appendChild(f); v.appendChild(d);
+  };
+  function fillStrip() {
+    var s = $("strip"); if (s.firstChild || !house) return;
+    house.stamps.forEach(function (x) {
+      var i = document.createElement("img"); i.src = "img/" + x.file; i.loading = "lazy";
+      i.alt = "No." + pad(x.number) + " " + x.country; i.title = i.alt + (x.status === "available" ? "" : " (" + x.status + ")");
+      if (x.status !== "available") i.style.opacity = .35;
+      s.appendChild(i);
+    });
+  }
+
+  // ---------- stamps ----------
   function loadHouse() {
     return fetch("status.json", { cache: "no-store" }).then(function (r) { return r.json(); })
-      .then(function (j) { house = j; fillPick(); }).catch(function () { say("s3s", "Could not load the stamp list, retrying.", "bad"); });
+      .then(function (j) { house = j; fillPick(); fillStrip(); }).catch(function () { say("s3s", "Could not load the stamp list, retrying.", "bad"); });
   }
   function fillPick() {
     var sel = $("pick"), keep = sel.value; sel.textContent = "";
@@ -133,19 +294,23 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
     api("POST", "/wallet").then(function (r) {
       busy = false;
       if (!r.ok) { $("bCreate").disabled = false; say("s1s", r.error || "failed", "bad"); return; }
-      st = { key: r.key, address: r.address, created: Date.now() }; save();
+      st = { key: r.key, address: r.address, created: Date.now(), alerts: st.alerts }; save();
+      logEv("created", "Wallet created (shielded address " + r.address.slice(0, 12) + "…)");
+      if (/already in your wallet/.test(r.starter || "")) logEv("starter", "1,000 free starter BTCZ already inside");
       showKey(true); tick();
     });
   };
   $("bAsk").onclick = function () {
     if (busy || !house) return; var n = parseInt($("pick").value, 10); if (!n) return;
-    busy = true; $("bAsk").disabled = true; say("s3s", "Sending your signed request…", "", true);
+    busy = true; $("bAsk").disabled = true; say("s3s", "Sending your signed request… (10 to 60 seconds)", "", true);
     api("GET", "/inbox?limit=50").then(function (ib) {
       var seen = (ib.ok ? ib.items : []).map(function (i) { return i.txid; });
       return api("POST", "/message", { to: house.house_address, text: "STAMP " + n }).then(function (r) {
         busy = false;
         if (!r.ok) { $("bAsk").disabled = false; say("s3s", r.error || "failed", "bad"); return; }
-        st.stamp = n; st.askTx = r.txid; st.askAt = Date.now(); st.seen = seen; save(); tick();
+        st.stamp = n; st.askTx = r.txid; st.askAt = Date.now(); st.seen = seen; save();
+        logEv("ask" + n + r.txid, "Signed request \"STAMP " + n + "\" sent to the house agent", r.txid);
+        tick();
       });
     });
   };
@@ -155,7 +320,9 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
     api("POST", "/deal/pay", { deal_id: st.deal }).then(function (r) {
       busy = false;
       if (!r.ok) { $("bPay").disabled = false; say("s4s", (r.error || "failed") + " · You can press Pay again.", "bad"); return; }
-      st.paidTx = r.txid; st.paidAt = Date.now(); save(); tick();
+      st.paidTx = r.txid; st.paidAt = Date.now(); save();
+      logEv("paid", "Paid 50 BTCZ for the deal", r.txid);
+      tick();
     });
   };
   $("bShowKey").onclick = function () { showKey(!$("keybox").textContent); };
@@ -177,39 +344,41 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
   function tick() {
     clearTimeout(timer);
     var again = function () { if (!st.verdict) timer = setTimeout(tick, POLL_MS); };
-    step().then(again, again);
+    pollChain().then(step).then(again, again);
   }
 
   function step() {
     if (!st.key) {
-      mark(1, "on"); [2, 3, 4, 5].forEach(function (n) { mark(n); });
+      mark(1, "on"); [2, 3, 4, 5].forEach(function (n) { mark(n); }); waiting(false);
       return Promise.resolve();
     }
     $("keyrow").style.display = "";
     mark(1, "done"); $("s1b").textContent = "";
-    say("s1s", "✓ Wallet created: " + st.address.slice(0, 18) + "… (shielded zs address)", "g");
+    say("s1s", "✓ Wallet ready: " + st.address.slice(0, 18) + "… (shielded zs address)", "g");
     return (house ? Promise.resolve() : loadHouse()).then(function () { return api("GET", "/balance"); }).then(function (b) {
       if (!b.ok) {
-        if (/invalid key/.test(b.error || "")) { say("s2s", "This test wallet no longer exists. Use 'Forget this test wallet' below to start again.", "bad"); }
+        if (/invalid key/.test(b.error || "")) say("s2s", "This test wallet no longer exists. Use 'Forget this test wallet' below to start again.", "bad");
         else say("s2s", b.error || "error", "bad");
         return;
       }
+      showWallet(b);
       var bal = num(b.balance_btcz), inc = num(b.incoming_unconfirmed_btcz);
-      if (st.deal || st.stamp) {
-        mark(2, "done"); say("s2s", "✓ Balance: " + b.balance_btcz + " BTCZ (" + b.starter_gift_btcz + " are starter coins)", "g");
-      } else if (bal >= NEED) {
-        mark(2, "done"); say("s2s", "✓ Received! Balance: " + b.balance_btcz + " BTCZ", "g");
+      if (st.deal || st.stamp || bal >= NEED) {
+        mark(2, "done"); $("e2").textContent = "";
+        say("s2s", "✓ " + fmt(b.starter_gift_btcz) + " starter BTCZ in your wallet", "g");
+        logEv("starter", "1,000 free starter BTCZ received");
       } else {
-        mark(2, "on");
-        if (inc > 0) say("s2s", inc + " BTCZ arriving: waiting for 1 BitcoinZ block (about 2.5 minutes)…", "", true);
-        else if (b.starter_status === "pending") say("s2s", "Your starter coins are on the way (sent every few minutes, max 10 wallets per day). Waiting…", "", true);
+        mark(2, "on"); waiting(true);
+        if (inc > 0) { say("s2s", "+" + fmt(inc) + " BTCZ arriving! Ready to use after the next block (see the bar on top).", "warn", true); logEv("arriving", "Starter coins on their way"); }
+        else if (b.starter_status === "pending") { $("e2").textContent = "a few minutes"; say("s2s", "Your starter coins are being sent (pre-funded wallets were all taken: this one takes a few minutes, then 1 block)…", "", true); }
         else say("s2s", "No free starter coins left today. You can send at least " + NEED + " BTCZ to your wallet's t-deposit address: " + b.t_deposit_address, "warn");
         mark(3); mark(4); mark(5); return;
       }
       if (!st.stamp) {
         mark(3, "on"); $("pick").parentNode.style.display = ""; $("pick").disabled = false; $("bAsk").disabled = busy;
-        mark(4); mark(5);
+        mark(4); mark(5); waiting(false);
         say("s3s", "Pick a stamp. Max 1 stamp per wallet per day.");
+        yourTurn("pick", "Pick your stamp");
         return;
       }
       $("pick").disabled = true; $("bAsk").disabled = true; $("pick").parentNode.style.display = "none";
@@ -226,27 +395,37 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
             (x.description || "").indexOf(tag) >= 0 && (!st.deal || x.deal_id === st.deal)) deal = x;
       });
       if (!deal) {
-        mark(3, "on"); mark(4); mark(5);
-        say("s3s", "✓ Request sent for " + tag + ". The house agent answers after 1 BitcoinZ block (usually 3 to 8 minutes)…", "", true);
+        mark(3, "on"); mark(4); mark(5); waiting(true);
+        var secs = (Date.now() - (st.askAt || Date.now())) / 1000;
+        say("s3s", "✓ Request sent for " + tag + " (" + clock(secs) + " ago). The house agent checks every 30 seconds and answers with a signed offer…", "", true);
         return houseReplies();
       }
       if (!st.deal) { st.deal = deal.deal_id; save(); }
+      logEv("offer", "Signed deal offer received from the house agent (deal " + deal.deal_id + ")");
       mark(3, "done"); say("s3s", "✓ The house agent answered with a signed deal offer.", "g");
       var o = $("offer"); o.textContent = "";
-      var p = document.createElement("p"); p.innerHTML = "";
+      var p = document.createElement("p");
       p.appendChild(document.createTextNode("Offer: " + deal.description + " · "));
       var bb = document.createElement("b"); bb.textContent = deal.price_per_step_btcz + " BTCZ"; p.appendChild(bb);
       p.appendChild(document.createTextNode(" · seller " + (deal.seller_signer || "").slice(0, 16) + "…"));
       o.appendChild(p);
       if (num(deal.price_per_step_btcz) > 50) { mark(4, "on"); say("s4s", "Unexpected price: not paying automatically.", "bad"); $("bPay").disabled = true; return; }
       if (!deal.paid_steps) {
-        mark(4, "on"); mark(5); $("bPay").disabled = busy;
-        if (!busy) say("s4s", "Ready. If you get 'wait 1 block', your wallet's change is still confirming: press Pay again in 2 to 3 minutes.");
+        mark(4, "on"); mark(5); waiting(false); $("bPay").disabled = busy;
+        if (!busy) say("s4s", "Your turn: press Pay.");
+        yourTurn("pay", "The offer is here: press Pay");
         return;
       }
-      mark(4, "done"); $("bPay").disabled = true; say("s4s", "✓ Paid. Payment needs 1 BitcoinZ block before the house agent delivers.", "g");
+      mark(4, "done"); $("bPay").disabled = true; say("s4s", "✓ Paid.", "g");
       var dl = (deal.deliveries || [])[0];
-      if (!dl) { mark(5, "on"); say("s5s", "Waiting for the delivery (usually 3 to 8 minutes)…", "", true); return; }
+      if (!dl) {
+        mark(5, "on"); waiting(true);
+        var since = chainInfo ? chainInfo.seconds_since_block + (Date.now() - chainAt) / 1000 : 0;
+        say("s5s", "Waiting for your payment to be written in a block, then the house agent delivers within 30 seconds. " +
+            (chainInfo ? (since < BLOCK ? "Next block expected in ~" + clock(BLOCK - since) + "." : "Next block: any second now.") : ""), "", true);
+        return;
+      }
+      logEv("delivered", "Stamp delivered by the house agent (link + signed SHA-256)", dl.txid);
       return verify(deal, dl);
     });
   }
@@ -259,19 +438,20 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
         if (!msg && i.from_claimed === house.house_address && i.signature_valid && i.text && !/^DEAL1\|/.test(i.text) && seen.indexOf(i.txid) < 0) msg = i;
       });
       if (msg) {
+        waiting(false);
         say("s3s", "The house agent replied: " + msg.text, "warn");
         var b = document.createElement("button"); b.className = "ghost"; b.textContent = "Choose another stamp";
-        b.onclick = function () { delete st.stamp; save(); house = null; tick(); };
+        b.onclick = function () { delete st.stamp; save(); house = null; $("strip").textContent = ""; tick(); };
         $("s3s").appendChild(document.createElement("br")); $("s3s").appendChild(b);
+        yourTurn("reply", "The house agent replied");
       }
     });
   }
 
   function verify(deal, dl) {
-    if (st.verdict) { showResult(dl, st.verdict); return Promise.resolve(); }
+    if (st.verdict) { showResult(st.verdict); return Promise.resolve(); }
     var link = dl.link || "";
-    var base = location.origin + "/stamps/img/";
-    if (link.indexOf(base) !== 0 && link.indexOf("https://proof.zketernity.app/stamps/img/") !== 0) {
+    if (link.indexOf(location.origin + "/stamps/img/") !== 0 && link.indexOf("https://proof.zketernity.app/stamps/img/") !== 0) {
       mark(5, "on"); say("s5s", "Delivery received, but the link is not a stamp image of this site: not downloading it.", "bad"); return Promise.resolve();
     }
     var local = "img/" + link.split("/stamps/img/")[1];
@@ -283,14 +463,16 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
         return api("POST", "/deal/check", { deal_id: deal.deal_id, fingerprint: hex }).then(function (c) {
           if (!c.ok) { say("s5s", c.error || "check failed", "bad"); return; }
           st.verdict = { match: c.match, mine: hex, stated: c.fingerprint_sha256, txid: c.txid, local: local }; save();
-          showResult(dl, st.verdict);
+          logEv("check", c.match ? "Checked: MATCH ✓" : "Checked: NO MATCH ✗");
+          showResult(st.verdict);
+          yourTurn("done", c.match ? "Your stamp is here: MATCH" : "Check result: NO MATCH");
         });
       });
   }
 
-  function showResult(dl, v) {
+  function showResult(v) {
     clearTimeout(timer);
-    mark(5, "done");
+    mark(5, "done"); waiting(false);
     var r = $("result"); r.textContent = "";
     var m = document.createElement("div"); m.className = v.match ? "match" : "match bad";
     m.textContent = v.match ? "✓ MATCH" : "✗ NO MATCH"; r.appendChild(m);
@@ -312,6 +494,7 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
   }
 
   if (st.key) showKey(false);
+  alertLabel(); drawLog();
   tick();
 })();
 </script>

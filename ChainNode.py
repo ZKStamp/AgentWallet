@@ -68,6 +68,12 @@ def block_height():
     return int(cli("getblockcount"))
 
 
+def tip():
+    """Latest block: height and time (unix seconds)."""
+    hdr = json.loads(cli("getblockheader", cli("getbestblockhash")))
+    return {"height": int(hdr["height"]), "time": int(hdr["time"])}
+
+
 def send(from_addr, outputs):
     """Send one shielded transaction.
 
