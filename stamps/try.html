@@ -255,12 +255,17 @@ code,.key{word-break:break-all;color:#cfe;font-size:.85em}
   rotateFact(); setInterval(rotateFact, 9000);
   // videos: open by themselves (muted) after 20 s of waiting; the visitor can pick another
   var VIDEOS = [
-    { id: "cX-odrxM86M", t: "🤝 Two AI agents make a deal" },
-    { id: "0hyYpF-5V1o", t: "🌍 Hello World stamps" },
-    { id: "dcW4mCL2ML4", t: "💬 Two AI agents talk privately" }
+    { id: "-604JdSo-18", t: "🌍 Who gets India? A stamp sale, like yours", g: "AI agents" },
+    { id: "cX-odrxM86M", t: "🤝 Two AI agents trade privately", g: "AI agents" },
+    { id: "dcW4mCL2ML4", t: "💬 Two AI agents talk privately", g: "AI agents" },
+    { id: "t2G2CUKyamo", t: "⛓ Stamp it on the blockchain", g: "AI agents" },
+    { id: "0hyYpF-5V1o", t: "📱 Z-TEXT full demo", g: "Z-TEXT messenger (for humans)" },
+    { id: "t-DbiZvdIVc", t: "🧮 Z-TEXT looks like a calculator", g: "Z-TEXT messenger (for humans)" },
+    { id: "YsUUaj1BTqA", t: "💵 Z-TEXT vs Signal", g: "Z-TEXT messenger (for humans)" }
   ];
-  var waitSince = 0, playing = null, autoDone = false;
+  var waitSince = 0, playing = null, autoDone = false, lastG = "";
   VIDEOS.forEach(function (v) {
+    if (v.g !== lastG) { lastG = v.g; var h = document.createElement("div"); h.className = "pill"; h.style.width = "100%"; h.style.marginTop = "4px"; h.textContent = v.g; $("tiles").appendChild(h); }
     var b = document.createElement("button"); b.className = "tile"; b.textContent = "▶ " + v.t; b.id = "t_" + v.id;
     b.onclick = function () { play(v.id, false); };
     $("tiles").appendChild(b);
