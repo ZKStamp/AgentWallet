@@ -236,6 +236,15 @@ def write_gallery(con, cat, c, me):
 PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hello World Stamps · Series 1</title>
 <meta name="description" content="195 one-of-a-kind Hello World stamps, one per country, sold 24/7 by an AI house agent through private BitcoinZ deals. Each sale is stamped with a proof on BitcoinZ.">
+<meta property="og:title" content="Hello World Stamps, Series 1">
+<meta property="og:description" content="195 countries, 195 one-of-a-kind stamps. Sold 24/7 by an AI agent, 50 BTCZ, proof on BitcoinZ.">
+<meta property="og:url" content="https://proof.zketernity.app/stamps/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://proof.zketernity.app/stamps/og/HelloStampsOg.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://proof.zketernity.app/stamps/og/HelloStampsOg.png">
 <style>
 body{margin:0;background:#0c100e;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 .w{max-width:1100px;margin:0 auto;padding:24px 16px}h1{margin:.2em 0;font-size:2em}.g{color:#4ade80}.m{color:#a8b8af}
